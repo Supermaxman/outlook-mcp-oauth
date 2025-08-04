@@ -60,34 +60,36 @@ export class MicrosoftService {
   }
 
   private async refreshAccessToken(): Promise<void> {
-    const response = await fetch(
-      `https://login.microsoftonline.com/common/oauth2/v2.0/token`,
+    const body = new URLSearchParams({
+      client_id: this.env.MICROSOFT_CLIENT_ID,
+      client_secret: this.env.MICROSOFT_CLIENT_SECRET,
+      grant_type: "refresh_token",
+      refresh_token: this.refreshToken,
+      scope:
+        "openid profile email offline_access Calendars.ReadWrite Mail.ReadWrite Mail.Send User.Read People.Read",
+    });
+
+    const res = await fetch(
+      // use the same tenant you passed to the original exchange
+      `https://login.microsoftonline.com/${this.env.MICROSOFT_TENANT_ID}/oauth2/v2.0/token`,
       {
         method: "POST",
-        body: JSON.stringify({
-          client_id: this.env.MICROSOFT_CLIENT_ID,
-          client_secret: this.env.MICROSOFT_CLIENT_SECRET,
-          refresh_token: this.refreshToken,
-          grant_type: "refresh_token",
-          scope:
-            "openid profile email offline_access Calendars.ReadWrite Mail.ReadWrite Mail.Send User.Read People.Read",
-        }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
       }
     );
 
-    if (!response.ok) {
-      throw new Error("Failed to refresh access token");
+    if (!res.ok) {
+      throw new Error(`Failed to refresh access token: ${await res.text()}`);
     }
 
-    const data = (await response.json()) as {
+    const { access_token, refresh_token } = (await res.json()) as {
       access_token: string;
       refresh_token?: string;
-      expires_in: number;
     };
-    this.accessToken = data.access_token;
-    if (data.refresh_token) {
-      this.refreshToken = data.refresh_token;
-    }
+
+    this.accessToken = access_token;
+    if (refresh_token) this.refreshToken = refresh_token;
   }
 
   extractUserId(accessToken: string): string {
