@@ -29,15 +29,15 @@
 		{
 			"tag": "v1",
 			"new_sqlite_classes": [
-				"OutlookMCP"
+				"MicrosoftMCP"
 			]
 		}
 	],
 	"durable_objects": {
 		"bindings": [
 			{
-				"class_name": "OutlookMCP",
-				"name": "OUTLOOK_MCP_OBJECT"
+				"class_name": "MicrosoftMCP",
+				"name": "MICROSOFT_MCP_OBJECT"
 			}
 		]
 	},
