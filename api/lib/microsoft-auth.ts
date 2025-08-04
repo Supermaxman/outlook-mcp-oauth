@@ -39,7 +39,7 @@ export function getMicrosoftAuthEndpoint(
   tenantId: string,
   endpoint: string
 ): string {
-  return `https://login.microsoftonline.com/${tenantId}/${endpoint}`;
+  return `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/${endpoint}`;
 }
 
 /**
