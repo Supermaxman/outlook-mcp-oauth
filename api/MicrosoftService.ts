@@ -16,11 +16,9 @@ export class MicrosoftService {
   }
 
   private async makeRequest(
-    endpoint: string,
+    url: string,
     options: RequestInit = {}
   ): Promise<any> {
-    const url = `${this.baseUrl}${endpoint}`;
-
     try {
       const response = await fetch(url, {
         ...options,
@@ -57,6 +55,14 @@ export class MicrosoftService {
       console.error("Microsoft API request failed:", error);
       throw error;
     }
+  }
+
+  private async makeEndpointRequest(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<any> {
+    const url = `${this.baseUrl}${endpoint}`;
+    return this.makeRequest(url, options);
   }
 
   private async refreshAccessToken(): Promise<void> {
@@ -109,11 +115,22 @@ export class MicrosoftService {
       $orderby: "start/dateTime desc",
       $top: limit.toString(),
     };
-    const url = `/users/${this.userId}/events?${new URLSearchParams(
-      params
-    ).toString()}`;
-    return this.makeRequest(url, {
-      method: "GET",
-    });
+    const initialUrl = `${this.baseUrl}/users/${
+      this.userId
+    }/events?${new URLSearchParams(params).toString()}`;
+    let url: string | null = initialUrl;
+    const events: any[] = [];
+    while (url) {
+      const data = await this.makeRequest(url, {
+        method: "GET",
+      });
+      const newEvents = data["value"];
+      // TODO consider some better formatting for the events
+      if (newEvents) {
+        events.push(...newEvents);
+      }
+      url = data["@odata.nextLink"] || null;
+    }
+    return events;
   }
 }
