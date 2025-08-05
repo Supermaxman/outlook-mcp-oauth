@@ -346,4 +346,33 @@ export class MicrosoftService {
     // consider normalizing times to Date objects here, if you like
     return events;
   }
+
+  async createCalendarEvent(
+    subject: string,
+    startDate: string,
+    endDate: string,
+    reminderMinutesBeforeStart: number,
+    body?: string,
+    location?: string
+  ) {
+    const eventData = {
+      subject,
+      start: { dateTime: startDate, timeZone: "UTC" },
+      end: { dateTime: endDate, timeZone: "UTC" },
+      reminderMinutesBeforeStart,
+      body: body ? { contentType: "text", content: body } : undefined,
+      location: location ? { displayName: location } : undefined,
+      isAllDay: false,
+    };
+
+    const eventRaw = await this.makeRequest<unknown>(
+      `${this.baseUrl}/users/${this.userId}/events`,
+      {
+        method: "POST",
+        body: JSON.stringify(eventData),
+      }
+    );
+    const event = CalendarEventSchema.parse(eventRaw);
+    return event;
+  }
 }

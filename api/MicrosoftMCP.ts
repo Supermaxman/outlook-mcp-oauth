@@ -74,6 +74,55 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       }
     );
 
+    server.tool(
+      "createCalendarEvent",
+      "Create a new calendar event for the user",
+      {
+        subject: z.string().describe("The subject of the event"),
+        startDate: z
+          .string()
+          .describe("The start date of the event in ISO 8601 format"),
+        endDate: z
+          .string()
+          .describe("The end date of the event in ISO 8601 format"),
+        reminderMinutesBeforeStart: z
+          .number()
+          .default(15)
+          .describe(
+            "The number of minutes before the event start to send a reminder"
+          ),
+        body: z
+          .string()
+          .optional()
+          .describe("The body of the event, in text format"),
+        location: z
+          .string()
+          .optional()
+          .describe("The location of the event (or meeting link)"),
+        // TODO categories
+        // TODO is_all_day
+        // TODO attendees
+      },
+      async ({
+        subject,
+        startDate,
+        endDate,
+        reminderMinutesBeforeStart,
+        body,
+        location,
+      }) => {
+        const event = await this.microsoftService.createCalendarEvent(
+          subject,
+          startDate,
+          endDate,
+          reminderMinutesBeforeStart,
+          body,
+          location
+        );
+        return this.formatResponse("Calendar event created", event);
+      }
+    );
+
     return server;
   }
 }
