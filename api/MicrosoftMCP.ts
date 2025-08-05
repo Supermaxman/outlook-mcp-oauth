@@ -5,7 +5,7 @@ import { MicrosoftService } from "./MicrosoftService.ts";
 import { MicrosoftAuthContext } from "../types";
 
 /**
- * The `SpotifyMCP` class exposes the Spotify API via the Model Context Protocol
+ * The `MicrosoftMCP` class exposes the Microsoft's Outlook API via the Model Context Protocol
  * for consumption by API Agents
  */
 export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
