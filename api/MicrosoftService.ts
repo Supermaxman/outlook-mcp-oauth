@@ -1,5 +1,210 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { decodeJwt } from "jose";
+import {
+  CalendarEventSchema,
+  CalendarEventStrict,
+} from "./lib/microsoft-types";
+
+export interface DateTimeWithZone {
+  /** ISO-8601 date-time string, e.g. "2025-08-05T14:00:00.0000000" */
+  dateTime: string;
+  /** IANA or Windows time-zone identifier, e.g. "UTC" or "Central Standard Time" */
+  timeZone: string;
+}
+
+export interface EmailAddress {
+  name: string;
+  address: string;
+}
+
+export interface ResponseStatus {
+  response:
+    | "none"
+    | "organizer"
+    | "accepted"
+    | "tentativelyAccepted"
+    | "declined"
+    | "notResponded"
+    | string;
+  /** ISO-8601 date-time string */
+  time: string;
+}
+
+export interface ItemBody {
+  contentType: "html" | "text";
+  content: string;
+}
+
+export interface PhysicalAddress {
+  street: string;
+  city: string;
+  state: string;
+  countryOrRegion: string;
+  postalCode: string;
+}
+
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+  altitude?: number;
+  accuracy?: number;
+  altitudeAccuracy?: number;
+}
+
+/* ---------- complex helpers ---------- */
+
+export interface Location {
+  displayName: string;
+  locationUri?: string;
+  locationType?:
+    | "default"
+    | "conferenceRoom"
+    | "homeAddress"
+    | "businessAddress"
+    | "geoCoordinates"
+    | "streetAddress"
+    | "hotel"
+    | "restaurant"
+    | "localBusiness"
+    | "postalAddress"
+    | string;
+  uniqueId?: string;
+  uniqueIdType?:
+    | "unknown"
+    | "locationStore"
+    | "directory"
+    | "private"
+    | "bing"
+    | string;
+  address?: PhysicalAddress;
+  coordinates?: Coordinates;
+}
+
+export interface RecurrencePattern {
+  type:
+    | "daily"
+    | "weekly"
+    | "absoluteMonthly"
+    | "relativeMonthly"
+    | "absoluteYearly"
+    | "relativeYearly";
+  interval: number;
+  month: number;
+  dayOfMonth: number;
+  daysOfWeek?: (
+    | "sunday"
+    | "monday"
+    | "tuesday"
+    | "wednesday"
+    | "thursday"
+    | "friday"
+    | "saturday"
+  )[];
+  firstDayOfWeek?:
+    | "sunday"
+    | "monday"
+    | "tuesday"
+    | "wednesday"
+    | "thursday"
+    | "friday"
+    | "saturday";
+  index?: "first" | "second" | "third" | "fourth" | "last";
+}
+
+export interface RecurrenceRange {
+  type: "noEnd" | "endDate" | "numbered";
+  /** YYYY-MM-DD */
+  startDate: string;
+  /** YYYY-MM-DD */
+  endDate?: string;
+  recurrenceTimeZone?: string;
+  numberOfOccurrences?: number;
+}
+
+export interface Recurrence {
+  pattern: RecurrencePattern;
+  range: RecurrenceRange;
+}
+
+export interface Attendee {
+  emailAddress: EmailAddress;
+  type?: "required" | "optional" | "resource" | string;
+  status?: ResponseStatus;
+}
+
+/* ---------- main event ---------- */
+
+export interface CalendarEvent {
+  /* identifiers & timestamps */
+  id: string;
+  createdDateTime: string;
+  lastModifiedDateTime: string;
+
+  /* classification & misc. flags */
+  categories: string[];
+  originalStartTimeZone: string;
+  originalEndTimeZone: string;
+  reminderMinutesBeforeStart: number;
+  isReminderOn: boolean;
+
+  /* core content */
+  subject: string;
+  bodyPreview: string;
+  body: ItemBody;
+
+  importance: "low" | "normal" | "high";
+  sensitivity: "normal" | "personal" | "private" | "confidential";
+
+  isAllDay: boolean;
+  isCancelled: boolean;
+  isOrganizer: boolean;
+  responseRequested: boolean;
+  seriesMasterId: string | null;
+
+  showAs:
+    | "free"
+    | "tentative"
+    | "busy"
+    | "oof"
+    | "workingElsewhere"
+    | "unknown"
+    | string;
+  type: "singleInstance" | "occurrence" | "exception" | "seriesMaster" | string;
+
+  /* links & online-meeting info */
+  webLink: string;
+  onlineMeetingUrl: string;
+  isOnlineMeeting: boolean;
+  onlineMeetingProvider:
+    | "unknown"
+    | "teamsForBusiness"
+    | "skypeForBusiness"
+    | "skypeForConsumer"
+    | string;
+
+  allowNewTimeProposals: boolean;
+  occurrenceId: string | null;
+  isDraft: boolean;
+  hideAttendees: boolean;
+
+  /* composite objects */
+  responseStatus: ResponseStatus;
+  start: DateTimeWithZone;
+  end: DateTimeWithZone;
+
+  location: Location;
+  locations: Location[];
+
+  recurrence?: Recurrence;
+
+  attendees: Attendee[];
+  organizer: { emailAddress: EmailAddress };
+}
+
+type ODataPage<T> = {
+  value: T[];
+  "@odata.nextLink"?: string;
+};
 
 export class MicrosoftService {
   private env: Env;
@@ -15,10 +220,10 @@ export class MicrosoftService {
     this.userId = this.extractUserId(accessToken);
   }
 
-  private async makeRequest(
+  private async makeRequest<T>(
     url: string,
     options: RequestInit = {}
-  ): Promise<any> {
+  ): Promise<T> {
     try {
       const response = await fetch(url, {
         ...options,
@@ -50,19 +255,12 @@ export class MicrosoftService {
         );
       }
 
-      return response.json();
+      const data = await response.json();
+      return data as T;
     } catch (error) {
       console.error("Microsoft API request failed:", error);
       throw error;
     }
-  }
-
-  private async makeEndpointRequest(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<any> {
-    const url = `${this.baseUrl}${endpoint}`;
-    return this.makeRequest(url, options);
   }
 
   private async refreshAccessToken(): Promise<void> {
@@ -106,31 +304,46 @@ export class MicrosoftService {
   // Calendars
   async getUserCalendarEvents(
     startDate: string,
-    endDate: string,
-    limit: number = 100
-  ): Promise<any> {
+    endDate: string
+  ): Promise<CalendarEventStrict[]> {
+    // const params = {
+    //   // TODO support finding recurring events, not sure if it find them by default
+    //   $filter: `start/dateTime lt '${endDate}' and end/dateTime ge '${startDate}'`,
+    //   $orderby: "start/dateTime desc",
+    //   $top: limit.toString(),
+    // };
+    // const initialUrl = `${this.baseUrl}/users/${
+    //   this.userId
+    // }/calendarView?${new URLSearchParams(params).toString()}`;
+
     const params = {
-      // TODO support finding recurring events, not sure if it find them by default
-      $filter: `start/dateTime lt '${endDate}' and end/dateTime ge '${startDate}'`,
-      $orderby: "start/dateTime desc",
-      $top: limit.toString(),
+      startDateTime: startDate,
+      endDateTime: endDate,
     };
+
     const initialUrl = `${this.baseUrl}/users/${
       this.userId
-    }/events?${new URLSearchParams(params).toString()}`;
-    let url: string | null = initialUrl;
-    const events: any[] = [];
+    }/calendarView?${new URLSearchParams(params).toString()}`;
+
+    let url: string | undefined = initialUrl;
+    const events: CalendarEventStrict[] = [];
+
     while (url) {
-      const data = await this.makeRequest(url, {
+      // tell makeRequest what the payload looks like:
+      const page = await this.makeRequest<ODataPage<unknown>>(url, {
         method: "GET",
+        // headers: {
+        //   // TODO make this dynamic and configurable
+        //   Prefer: 'outlook.timezone="Central Standard Time"',
+        // },
       });
-      const newEvents = data["value"];
-      // TODO consider some better formatting for the events
-      if (newEvents) {
-        events.push(...newEvents);
-      }
-      url = data["@odata.nextLink"] || null;
+
+      // ⚡ validate every raw event – throws if anything is “illegal”
+      events.push(...page.value.map((raw) => CalendarEventSchema.parse(raw)));
+
+      url = page["@odata.nextLink"] as string | undefined;
     }
+    // consider normalizing times to Date objects here, if you like
     return events;
   }
 }

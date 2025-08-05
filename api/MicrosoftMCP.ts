@@ -58,17 +58,11 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
         endDate: z
           .string()
           .describe("End date for the events in ISO 8601 format"),
-        limit: z
-          .number()
-          .optional()
-          .default(100)
-          .describe("Maximum number of events (1-100)"),
       },
-      async ({ startDate, endDate, limit }) => {
+      async ({ startDate, endDate }) => {
         const events = await this.microsoftService.getUserCalendarEvents(
           startDate,
-          endDate,
-          limit
+          endDate
         );
         return this.formatResponse("Calendar events retrieved", events);
       }
