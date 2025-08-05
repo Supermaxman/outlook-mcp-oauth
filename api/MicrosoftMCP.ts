@@ -167,22 +167,23 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       }
     );
 
-    // TODO allow for partial updates
     server.tool(
       "updateCalendarEvent",
-      "Update a calendar event for the user",
+      "Update a calendar event for the user. Only provided fields will be updated, other fields will be left unchanged.",
       {
         eventId: z.string().describe("The ID of the event to update"),
-        subject: z.string().describe("The subject of the event"),
+        subject: z.string().optional().describe("The subject of the event"),
         startDate: z
           .string()
+          .optional()
           .describe("The start date of the event in ISO 8601 format"),
         endDate: z
           .string()
+          .optional()
           .describe("The end date of the event in ISO 8601 format"),
         reminderMinutesBeforeStart: z
           .number()
-          .default(15)
+          .optional()
           .describe(
             "The number of minutes before the event start to send a reminder"
           ),

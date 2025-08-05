@@ -263,6 +263,46 @@ export class MicrosoftService {
     }
   }
 
+  private async makeRequestIgnoreResponse(
+    url: string,
+    options: RequestInit = {}
+  ): Promise<void> {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      });
+
+      if (response.status === 401) {
+        // Token expired, try to refresh
+        await this.refreshAccessToken();
+
+        // Retry the request with new token
+        return fetch(url, {
+          ...options,
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+            "Content-Type": "application/json",
+            ...options.headers,
+          },
+        }).then((res) => res.json());
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `Microsoft API error: ${response.status} ${response.statusText}`
+        );
+      }
+    } catch (error) {
+      console.error("Microsoft API request failed:", error);
+      throw error;
+    }
+  }
+
   private async refreshAccessToken(): Promise<void> {
     const body = new URLSearchParams({
       client_id: this.env.MICROSOFT_CLIENT_ID,
@@ -384,7 +424,7 @@ export class MicrosoftService {
   }
 
   async deleteCalendarEvent(eventId: string) {
-    await this.makeRequest<unknown>(
+    await this.makeRequestIgnoreResponse(
       `${this.baseUrl}/users/${this.userId}/events/${eventId}`,
       {
         method: "DELETE",
@@ -403,13 +443,14 @@ export class MicrosoftService {
     return event;
   }
 
-  // TODO allow for partial updates
+  // allow for partial updates, but don't allow for removing fields, only updating them.
+  // TODO: Consider null for fields that should be removed.
   async updateCalendarEvent(
     eventId: string,
-    subject: string,
-    startDate: string,
-    endDate: string,
-    reminderMinutesBeforeStart: number,
+    subject?: string,
+    startDate?: string,
+    endDate?: string,
+    reminderMinutesBeforeStart?: number,
     body?: string,
     location?: string,
     isAllDay?: boolean,
@@ -417,17 +458,21 @@ export class MicrosoftService {
     attendees?: string[]
   ) {
     const eventData = {
-      subject,
-      start: { dateTime: startDate, timeZone: "UTC" },
-      end: { dateTime: endDate, timeZone: "UTC" },
-      reminderMinutesBeforeStart,
+      subject: subject ?? undefined,
+      start: startDate ? { dateTime: startDate, timeZone: "UTC" } : undefined,
+      end: endDate ? { dateTime: endDate, timeZone: "UTC" } : undefined,
+      reminderMinutesBeforeStart:
+        reminderMinutesBeforeStart !== undefined
+          ? reminderMinutesBeforeStart
+          : undefined,
       body: body ? { contentType: "text", content: body } : undefined,
       location: location ? { displayName: location } : undefined,
-      isAllDay: isAllDay ?? false,
-      categories: categories ?? undefined,
+      isAllDay: isAllDay !== undefined ? isAllDay : undefined,
+      categories: categories !== undefined ? categories : undefined,
       attendees:
-        attendees?.map((email) => ({ emailAddress: { address: email } })) ??
-        undefined,
+        attendees !== undefined
+          ? attendees.map((email) => ({ emailAddress: { address: email } }))
+          : undefined,
     };
 
     const eventRaw = await this.makeRequest<unknown>(
