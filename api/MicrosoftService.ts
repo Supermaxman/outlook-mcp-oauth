@@ -353,7 +353,10 @@ export class MicrosoftService {
     endDate: string,
     reminderMinutesBeforeStart: number,
     body?: string,
-    location?: string
+    location?: string,
+    isAllDay?: boolean,
+    categories?: string[],
+    attendees?: string[]
   ) {
     const eventData = {
       subject,
@@ -362,7 +365,11 @@ export class MicrosoftService {
       reminderMinutesBeforeStart,
       body: body ? { contentType: "text", content: body } : undefined,
       location: location ? { displayName: location } : undefined,
-      isAllDay: false,
+      isAllDay: isAllDay ?? false,
+      categories: categories ?? undefined,
+      attendees:
+        attendees?.map((email) => ({ emailAddress: { address: email } })) ??
+        undefined,
     };
 
     const eventRaw = await this.makeRequest<unknown>(

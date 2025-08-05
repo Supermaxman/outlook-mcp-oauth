@@ -99,9 +99,21 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           .string()
           .optional()
           .describe("The location of the event (or meeting link)"),
-        // TODO categories
-        // TODO is_all_day
-        // TODO attendees
+        isAllDay: z
+          .boolean()
+          .optional()
+          .describe("Whether the event is all day (default: false)"),
+        categories: z
+          .array(z.string())
+          .optional()
+          .describe("The categories of the event (default: no categories)"),
+        attendees: z
+          .array(z.string())
+          .optional()
+          // TODO allow required and optional attendees
+          .describe(
+            "The email addresses of the attendees of the event (default: just the user)"
+          ),
       },
       async ({
         subject,
@@ -110,6 +122,9 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
         reminderMinutesBeforeStart,
         body,
         location,
+        isAllDay,
+        categories,
+        attendees,
       }) => {
         const event = await this.microsoftService.createCalendarEvent(
           subject,
@@ -117,7 +132,10 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           endDate,
           reminderMinutesBeforeStart,
           body,
-          location
+          location,
+          isAllDay,
+          categories,
+          attendees
         );
         return this.formatResponse("Calendar event created", event);
       }
