@@ -141,6 +141,103 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       }
     );
 
+    server.tool(
+      "deleteCalendarEvent",
+      "Delete a calendar event for the user",
+      {
+        eventId: z.string().describe("The ID of the event to delete"),
+      },
+      async ({ eventId }) => {
+        await this.microsoftService.deleteCalendarEvent(eventId);
+        return this.formatResponse("Calendar event deleted", {
+          eventId,
+        });
+      }
+    );
+
+    server.tool(
+      "getCalendarEvent",
+      "Get a calendar event for the user",
+      {
+        eventId: z.string().describe("The ID of the event to get"),
+      },
+      async ({ eventId }) => {
+        const event = await this.microsoftService.getCalendarEvent(eventId);
+        return this.formatResponse("Calendar event retrieved", event);
+      }
+    );
+
+    // TODO allow for partial updates
+    server.tool(
+      "updateCalendarEvent",
+      "Update a calendar event for the user",
+      {
+        eventId: z.string().describe("The ID of the event to update"),
+        subject: z.string().describe("The subject of the event"),
+        startDate: z
+          .string()
+          .describe("The start date of the event in ISO 8601 format"),
+        endDate: z
+          .string()
+          .describe("The end date of the event in ISO 8601 format"),
+        reminderMinutesBeforeStart: z
+          .number()
+          .default(15)
+          .describe(
+            "The number of minutes before the event start to send a reminder"
+          ),
+        body: z
+          .string()
+          .optional()
+          .describe("The body of the event, in text format"),
+        location: z
+          .string()
+          .optional()
+          .describe("The location of the event (or meeting link)"),
+        isAllDay: z
+          .boolean()
+          .optional()
+          .describe("Whether the event is all day (default: false)"),
+        categories: z
+          .array(z.string())
+          .optional()
+          .describe("The categories of the event (default: no categories)"),
+        attendees: z
+          .array(z.string())
+          .optional()
+          // TODO allow required and optional attendees
+          .describe(
+            "The email addresses of the attendees of the event (default: just the user)"
+          ),
+      },
+      async ({
+        eventId,
+        subject,
+        startDate,
+        endDate,
+        reminderMinutesBeforeStart,
+        body,
+        location,
+        isAllDay,
+        categories,
+        attendees,
+      }) => {
+        const event = await this.microsoftService.updateCalendarEvent(
+          eventId,
+          subject,
+          startDate,
+          endDate,
+          reminderMinutesBeforeStart,
+          body,
+          location,
+          isAllDay,
+          categories,
+          attendees
+        );
+        return this.formatResponse("Calendar event updated", event);
+      }
+    );
+
     return server;
   }
 }

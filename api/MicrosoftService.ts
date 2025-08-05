@@ -382,4 +382,62 @@ export class MicrosoftService {
     const event = CalendarEventSchema.parse(eventRaw);
     return event;
   }
+
+  async deleteCalendarEvent(eventId: string) {
+    await this.makeRequest<unknown>(
+      `${this.baseUrl}/users/${this.userId}/events/${eventId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  }
+
+  async getCalendarEvent(eventId: string) {
+    const eventRaw = await this.makeRequest<unknown>(
+      `${this.baseUrl}/users/${this.userId}/events/${eventId}`,
+      {
+        method: "GET",
+      }
+    );
+    const event = CalendarEventSchema.parse(eventRaw);
+    return event;
+  }
+
+  // TODO allow for partial updates
+  async updateCalendarEvent(
+    eventId: string,
+    subject: string,
+    startDate: string,
+    endDate: string,
+    reminderMinutesBeforeStart: number,
+    body?: string,
+    location?: string,
+    isAllDay?: boolean,
+    categories?: string[],
+    attendees?: string[]
+  ) {
+    const eventData = {
+      subject,
+      start: { dateTime: startDate, timeZone: "UTC" },
+      end: { dateTime: endDate, timeZone: "UTC" },
+      reminderMinutesBeforeStart,
+      body: body ? { contentType: "text", content: body } : undefined,
+      location: location ? { displayName: location } : undefined,
+      isAllDay: isAllDay ?? false,
+      categories: categories ?? undefined,
+      attendees:
+        attendees?.map((email) => ({ emailAddress: { address: email } })) ??
+        undefined,
+    };
+
+    const eventRaw = await this.makeRequest<unknown>(
+      `${this.baseUrl}/users/${this.userId}/events/${eventId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(eventData),
+      }
+    );
+    const event = CalendarEventSchema.parse(eventRaw);
+    return event;
+  }
 }
