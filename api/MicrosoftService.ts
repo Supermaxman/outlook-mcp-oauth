@@ -808,7 +808,7 @@ export class MicrosoftService {
     await this.makeRequest<unknown>(
       `${this.baseUrl}/subscriptions/${subscriptionId}`,
       {
-        method: "POST",
+        method: "PATCH",
         body: JSON.stringify({
           expirationDateTime: expirationDateTime.toISOString(),
         }),
