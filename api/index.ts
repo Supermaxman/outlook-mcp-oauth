@@ -166,25 +166,21 @@ export default new Hono<{ Bindings: Env }>()
   .route(
     "/webhooks",
     new Hono()
-      // Validation challenge from Microsoft Graph
-      .get("/email-notify", async (c) => {
-        const url = new URL(c.req.url);
-        const validationToken = url.searchParams.get("validationToken");
-        if (!validationToken) {
-          return c.json({ error: "No validation token provided" }, 400);
-        }
-
-        const response: WebhookResponse = {
-          reqResponseCode: 200,
-          reqResponseContent: validationToken,
-          reqResponseContentType: "text",
-        };
-
-        return c.json(response);
-      })
 
       // Notification payloads
       .post("/email-notify", async (c) => {
+        const url = new URL(c.req.url);
+        const validationToken = url.searchParams.get("validationToken");
+        // Validation challenge from Microsoft Graph
+        if (validationToken) {
+          const response: WebhookResponse = {
+            reqResponseCode: 200,
+            reqResponseContent: validationToken,
+            reqResponseContentType: "text",
+          };
+
+          return c.json(response);
+        }
         const body = await c.req.json();
         const prompt: WebhookResponse = {
           reqResponseCode: 202,
