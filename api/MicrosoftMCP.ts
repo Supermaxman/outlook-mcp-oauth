@@ -240,12 +240,57 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
     );
 
     server.tool(
-      "getInboxEmails",
-      "Get the user's inbox emails",
-      {},
-      async () => {
-        const emails = await this.microsoftService.getInboxEmails();
-        return this.formatResponse("Inbox emails retrieved", emails);
+      "searchEmails",
+      "Search emails in a folder by date range with optional filters. Uses $search when a free-text query is provided, otherwise uses server-side filters and client-side refinement.",
+      {
+        folder: z
+          .enum(["inbox", "sentitems", "drafts"])
+          .default("inbox")
+          .describe("Folder to search: 'inbox', 'sentitems', or 'drafts'"),
+        startDate: z
+          .string()
+          .describe("Start of the date range in ISO 8601 format"),
+        endDate: z
+          .string()
+          .describe("End of the date range in ISO 8601 format"),
+        fromAddress: z
+          .string()
+          .optional()
+          .describe("Filter by sender email address (contains match)"),
+        toAddress: z
+          .string()
+          .optional()
+          .describe("Filter by recipient email address (contains match)"),
+        conversationId: z
+          .string()
+          .optional()
+          .describe("Filter by exact conversation ID"),
+        query: z
+          .string()
+          .optional()
+          .describe(
+            "Free-text search query. When set, server uses $search (no $filter/$orderby)."
+          ),
+      },
+      async ({
+        folder,
+        startDate,
+        endDate,
+        fromAddress,
+        toAddress,
+        conversationId,
+        query,
+      }) => {
+        const emails = await this.microsoftService.searchEmails(
+          folder,
+          startDate,
+          endDate,
+          fromAddress,
+          toAddress,
+          conversationId,
+          query
+        );
+        return this.formatResponse("Emails retrieved", emails);
       }
     );
 

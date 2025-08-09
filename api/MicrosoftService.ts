@@ -6,6 +6,7 @@ import {
   EmailSchema,
   EmailMessageSchema,
 } from "./lib/microsoft-types";
+import { z } from "zod";
 
 export interface DateTimeWithZone {
   /** ISO-8601 date-time string, e.g. "2025-08-05T14:00:00.0000000" */
@@ -503,6 +504,131 @@ export class MicrosoftService {
     );
     const emails = EmailSchema.parse(emailsRaw);
     return emails;
+  }
+
+  async searchEmails(
+    folder: "inbox" | "sentitems" | "drafts",
+    startDate: string,
+    endDate: string,
+    fromAddress?: string,
+    toAddress?: string,
+    conversationId?: string,
+    query?: string
+  ) {
+    type EmailMessage = z.infer<typeof EmailMessageSchema>;
+
+    const folderMap: Record<string, string> = {
+      inbox: "Inbox",
+      sentitems: "SentItems",
+      drafts: "Drafts",
+    };
+
+    const selectedFolder = folderMap[folder.toLowerCase()];
+    if (!selectedFolder) {
+      throw new Error(`Unsupported folder: ${folder}`);
+    }
+
+    const filterField =
+      folder.toLowerCase() === "inbox"
+        ? "receivedDateTime"
+        : folder.toLowerCase() === "sentitems"
+        ? "sentDateTime"
+        : "createdDateTime"; // drafts
+
+    const topLimit = 50; // max to return overall
+    const pageSize = 100; // max per page
+
+    const baseUrl = `${this.baseUrl}/me/mailFolders('${selectedFolder}')/messages`;
+
+    let params: Record<string, string>;
+    let headers: Record<string, string> | undefined;
+    if (query && query.trim().length > 0) {
+      // When using $search, cannot use $filter or $orderby; requires ConsistencyLevel: eventual
+      params = {
+        $search: query,
+        $top: String(pageSize),
+      };
+      headers = { ConsistencyLevel: "eventual" };
+    } else {
+      // Construct server-side date filter; string fields must be ISO 8601
+      let filterText = `${filterField} ge ${startDate} and ${filterField} le ${endDate}`;
+      // Optionally narrow by from address (supported in many cases, but still do client-side checks below)
+      if (fromAddress) {
+        // best-effort; Graph supports contains in many properties
+        filterText += ` and contains(from/emailAddress/address, '${fromAddress.replace(
+          /'/g,
+          "''"
+        )}')`;
+      }
+
+      params = {
+        $filter: filterText,
+        $orderby: `${filterField} desc`,
+        $top: String(pageSize),
+      };
+    }
+
+    const initialUrl = `${baseUrl}?${new URLSearchParams(params).toString()}`;
+
+    let url: string | undefined = initialUrl;
+    const results: EmailMessage[] = [];
+
+    while (url) {
+      const page: ODataPage<unknown> = await this.makeRequest<
+        ODataPage<unknown>
+      >(url, {
+        method: "GET",
+        headers,
+      });
+
+      const pageMessages = page.value.map((raw: unknown) =>
+        EmailMessageSchema.parse(raw)
+      ) as EmailMessage[];
+
+      // Client-side filtering for complex cases and to enforce date bounds
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      const filtered = pageMessages.filter((m) => {
+        const tsStr = m.receivedDateTime || m.sentDateTime || m.createdDateTime;
+        const ts = tsStr ? new Date(tsStr) : undefined;
+        const withinRange = ts ? ts >= start && ts <= end : true;
+        const matchesConversation = conversationId
+          ? m.conversationId === conversationId
+          : true;
+        const matchesFrom = fromAddress
+          ? !!m.from?.emailAddress?.address?.includes(fromAddress)
+          : true;
+        const matchesTo = toAddress
+          ? (m.toRecipients || []).some((r) =>
+              r.emailAddress?.address?.includes(toAddress)
+            )
+          : true;
+        return withinRange && matchesConversation && matchesFrom && matchesTo;
+      });
+
+      results.push(...filtered);
+
+      if (results.length >= topLimit) break;
+
+      url = page["@odata.nextLink"];
+    }
+
+    // Sort by most recent timestamp among received/sent/created
+    const sorted = results
+      .slice(0, topLimit)
+      .sort((a, b) => {
+        const aTs = new Date(
+          (a.receivedDateTime || a.sentDateTime || a.createdDateTime) ?? 0
+        ).getTime();
+        const bTs = new Date(
+          (b.receivedDateTime || b.sentDateTime || b.createdDateTime) ?? 0
+        ).getTime();
+        return bTs - aTs;
+      })
+      .slice(0, topLimit);
+
+    return sorted;
   }
 
   async getEmail(emailId: string) {
