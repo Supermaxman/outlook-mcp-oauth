@@ -281,14 +281,26 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           .array(z.string())
           .optional()
           .describe("Optional list of BCC recipient email addresses"),
+        conversationId: z
+          .string()
+          .optional()
+          .describe("Optional conversation ID to reply to"),
       },
-      async ({ subject, body, toRecipients, ccRecipients, bccRecipients }) => {
+      async ({
+        subject,
+        body,
+        toRecipients,
+        ccRecipients,
+        bccRecipients,
+        conversationId,
+      }) => {
         const draft = await this.microsoftService.draftEmail(
           subject,
           body,
           toRecipients,
           ccRecipients,
-          bccRecipients
+          bccRecipients,
+          conversationId
         );
         return this.formatResponse("Draft email created", draft);
       }

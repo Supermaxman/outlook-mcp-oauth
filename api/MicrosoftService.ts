@@ -521,7 +521,8 @@ export class MicrosoftService {
     body: string,
     toRecipients: string[],
     ccRecipients?: string[],
-    bccRecipients?: string[]
+    bccRecipients?: string[],
+    conversationId?: string
   ) {
     const draftData = {
       subject,
@@ -537,6 +538,7 @@ export class MicrosoftService {
         bccRecipients && bccRecipients.length > 0
           ? bccRecipients.map((address) => ({ emailAddress: { address } }))
           : undefined,
+      conversationId: conversationId ?? undefined,
     };
 
     const emailRaw = await this.makeRequest<unknown>(
