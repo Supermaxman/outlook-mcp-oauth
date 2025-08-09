@@ -254,8 +254,11 @@ export class MicrosoftService {
       }
 
       if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
         throw new Error(
-          `Microsoft API error: ${response.status} ${response.statusText}`
+          `Microsoft API error: ${response.status} ${response.statusText}${
+            errorText ? ` - ${errorText}` : ""
+          }`
         );
       }
 
@@ -297,8 +300,11 @@ export class MicrosoftService {
       }
 
       if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
         throw new Error(
-          `Microsoft API error: ${response.status} ${response.statusText}`
+          `Microsoft API error: ${response.status} ${response.statusText}${
+            errorText ? ` - ${errorText}` : ""
+          }`
         );
       }
     } catch (error) {
@@ -547,8 +553,11 @@ export class MicrosoftService {
   }
 
   async createSubscription() {
-    // add 6 days to the current date (max allowed is 7 days)
-    const expirationDateTime = new Date(Date.now() + 1000 * 60 * 60 * 24 * 6);
+    // max allowed for message subscriptions is 4230 minutes (~2.94 days)
+    const expirationMinutes = 4230;
+    const expirationDateTime = new Date(
+      Date.now() + expirationMinutes * 60 * 1000
+    );
     await this.makeRequest<unknown>(`${this.baseUrl}/subscriptions`, {
       method: "POST",
       body: JSON.stringify({
