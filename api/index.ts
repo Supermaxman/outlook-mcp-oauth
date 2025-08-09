@@ -4,7 +4,6 @@ import {
   getMicrosoftAuthEndpoint,
   exchangeCodeForToken,
   refreshAccessToken,
-  webhookAuthMiddleware,
 } from "./lib/microsoft-auth.ts";
 import { cors } from "hono/cors";
 import { Hono } from "hono";
@@ -162,11 +161,9 @@ export default new Hono<{ Bindings: Env }>()
     )
   )
 
-  // ensure the webhook is authenticated
-  .use("/webhooks/*", webhookAuthMiddleware)
   .route(
     "/webhooks",
-    new Hono()
+    new Hono<{ Bindings: Env }>()
 
       // Notification payloads
       .post("/email-notify", async (c) => {
@@ -183,6 +180,10 @@ export default new Hono<{ Bindings: Env }>()
           return c.json(response);
         }
         const body = await c.req.json();
+        const clientState = body?.value?.[0]?.clientState;
+        if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
+          return c.json({ error: "Invalid client state" }, 401);
+        }
         const prompt: WebhookResponse = {
           reqResponseCode: 202,
           reqResponseContent: JSON.stringify({ ok: true }),
@@ -200,6 +201,10 @@ export default new Hono<{ Bindings: Env }>()
       // Lifecycle notifications (e.g., reauthorizationRequired, subscriptionRemoved)
       .post("/email-lifecycle", async (c) => {
         const body = await c.req.json();
+        const clientState = body?.value?.[0]?.clientState;
+        if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
+          return c.json({ error: "Invalid client state" }, 401);
+        }
         // TODO: handle the webhook and actually refresh the subscription
         // TODO will need the oauth token to refresh the subscription
 
