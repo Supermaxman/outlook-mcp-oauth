@@ -8,6 +8,7 @@ import {
 } from "./lib/microsoft-auth.ts";
 import { cors } from "hono/cors";
 import { Hono } from "hono";
+import type { WebhookResponse } from "../types";
 
 // Export the MicrosoftMCP class so the Worker runtime can find it
 export { MicrosoftMCP };
@@ -164,13 +165,56 @@ export default new Hono<{ Bindings: Env }>()
   .use("/webhooks", webhookAuthMiddleware)
   .route(
     "/webhooks",
-    new Hono().post("/outlook-email-notify", async (c) => {
-      const body = await c.req.json();
-      console.log(body);
-      // TODO: handle the webhook and actually refresh the subscription
+    new Hono()
+      // Validation challenge from Microsoft Graph
+      .get("/email-notify", async (c) => {
+        const url = new URL(c.req.url);
+        const validationToken = url.searchParams.get("validationToken");
+        if (!validationToken) {
+          return c.json({ error: "No validation token provided" }, 400);
+        }
 
-      return c.json({ success: true });
-    })
+        const response: WebhookResponse = {
+          reqResponseCode: 200,
+          reqResponseContent: validationToken,
+          reqResponseContentType: "text",
+        };
+
+        return c.json(response);
+      })
+
+      // Notification payloads
+      .post("/email-notify", async (c) => {
+        const body = await c.req.json();
+        const prompt: WebhookResponse = {
+          reqResponseCode: 202,
+          reqResponseContent: JSON.stringify({ ok: true }),
+          reqResponseContentType: "json",
+          promptContent: `Outlook email received:\n\n\`\`\`json\n${JSON.stringify(
+            body,
+            null,
+            2
+          )}\n\`\`\``,
+        };
+
+        return c.json(prompt);
+      })
+
+      // Lifecycle notifications (e.g., reauthorizationRequired, subscriptionRemoved)
+      .post("/email-lifecycle", async (c) => {
+        const body = await c.req.json();
+        // TODO: handle the webhook and actually refresh the subscription
+        // TODO will need the oauth token to refresh the subscription
+
+        // no need to respond with any prompt info to the agent
+        const response: WebhookResponse = {
+          reqResponseCode: 202,
+          reqResponseContent: JSON.stringify({ ok: true }),
+          reqResponseContentType: "json",
+        };
+
+        return c.json(response);
+      })
   )
 
   // Health check endpoint

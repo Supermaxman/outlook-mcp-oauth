@@ -4,8 +4,7 @@ interface Env {
   MICROSOFT_CLIENT_SECRET: string;
   MICROSOFT_TENANT_ID: string;
   MICROSOFT_WEBHOOK_SECRET: string;
-  MICROSOFT_WEBHOOK_NOTIFY_URL: string;
-  MICROSOFT_WEBHOOK_REFRESH_URL: string;
+  MICROSOFT_WEBHOOK_URL: string;
   MICROSOFT_MCP_OBJECT: DurableObjectNamespace;
 }
 
@@ -39,4 +38,16 @@ export type MicrosoftAuthContext = {
   expiresIn?: number;
   tokenType?: string;
   scope?: string;
+};
+
+// Webhook response contract for proxied webhook handling
+export type WebhookResponse = {
+  /** HTTP status code to proxy back to the origin of the webhook */
+  reqResponseCode: number;
+  /** body string to proxy back; if JSON, stringify it */
+  reqResponseContent: string;
+  /** content type for reqResponseContent: "json" or "text" */
+  reqResponseContentType?: "json" | "text";
+  /** optional return to run with the agent to do something */
+  promptContent?: string;
 };

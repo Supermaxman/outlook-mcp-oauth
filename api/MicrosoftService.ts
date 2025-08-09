@@ -790,8 +790,8 @@ export class MicrosoftService {
       body: JSON.stringify({
         changeType: "created",
         clientState: this.env.MICROSOFT_WEBHOOK_SECRET,
-        notificationUrl: `${this.env.MICROSOFT_WEBHOOK_NOTIFY_URL}/outlook-email-notify`,
-        lifecycleNotificationUrl: `${this.env.MICROSOFT_WEBHOOK_REFRESH_URL}/outlook-email-notify`,
+        notificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/email-notify`,
+        lifecycleNotificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/email-lifecycle`,
         resource: "/me/mailFolders('Inbox')/messages",
         expirationDateTime: expirationDateTime.toISOString(),
         // TODO: add this so we can get the resource data
