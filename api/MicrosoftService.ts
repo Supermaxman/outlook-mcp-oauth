@@ -496,7 +496,7 @@ export class MicrosoftService {
   }
 
   async searchEmails(
-    folder: "inbox" | "sentitems" | "drafts",
+    folder: "inbox" | "sentitems" | "drafts" | "archive",
     startDate: string,
     endDate: string,
     fromAddress?: string,
@@ -510,6 +510,7 @@ export class MicrosoftService {
       inbox: "Inbox",
       sentitems: "SentItems",
       drafts: "Drafts",
+      archive: "Archive",
     };
 
     const selectedFolder = folderMap[folder.toLowerCase()];
@@ -517,12 +518,13 @@ export class MicrosoftService {
       throw new Error(`Unsupported folder: ${folder}`);
     }
 
+    const normalizedFolder = folder.toLowerCase();
     const filterField =
-      folder.toLowerCase() === "inbox"
-        ? "receivedDateTime"
-        : folder.toLowerCase() === "sentitems"
+      normalizedFolder === "sentitems"
         ? "sentDateTime"
-        : "createdDateTime"; // drafts
+        : normalizedFolder === "drafts"
+        ? "createdDateTime"
+        : "receivedDateTime"; // inbox, archive, others default to received
 
     const topLimit = 50; // max to return overall
     const pageSize = 100; // max per page
@@ -736,6 +738,29 @@ export class MicrosoftService {
         method: "DELETE",
       }
     );
+  }
+
+  async markEmailAsRead(emailId: string) {
+    await this.makeRequestIgnoreResponse(
+      `${this.baseUrl}/me/messages/${emailId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ isRead: true }),
+      }
+    );
+  }
+
+  async archiveEmail(emailId: string) {
+    // Move to Archive folder by using move action to well-known folder 'Archive'
+    const result = await this.makeRequest<unknown>(
+      `${this.baseUrl}/me/messages/${emailId}/move`,
+      {
+        method: "POST",
+        body: JSON.stringify({ destinationId: "Archive" }),
+      }
+    );
+    const moved = EmailMessageSchema.parse(result);
+    return moved;
   }
 
   async createSubscription() {

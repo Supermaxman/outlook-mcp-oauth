@@ -244,9 +244,11 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       "Search emails in a folder by date range with optional filters. Uses $search when a free-text query is provided, otherwise uses server-side filters and client-side refinement.",
       {
         folder: z
-          .enum(["inbox", "sentitems", "drafts"])
+          .enum(["inbox", "sentitems", "drafts", "archive"])
           .default("inbox")
-          .describe("Folder to search: 'inbox', 'sentitems', or 'drafts'"),
+          .describe(
+            "Folder to search: 'inbox', 'sentitems', 'drafts', or 'archive'"
+          ),
         startDate: z
           .string()
           .describe("Start of the date range in ISO 8601 format"),
@@ -291,6 +293,30 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           query
         );
         return this.formatResponse("Emails retrieved", emails);
+      }
+    );
+
+    server.tool(
+      "markEmailAsRead",
+      "Mark an email as read by ID.",
+      {
+        emailId: z.string().describe("The ID of the email to mark read"),
+      },
+      async ({ emailId }) => {
+        await this.microsoftService.markEmailAsRead(emailId);
+        return this.formatResponse("Email marked as read", { emailId });
+      }
+    );
+
+    server.tool(
+      "archiveEmail",
+      "Move an email to the Archive folder.",
+      {
+        emailId: z.string().describe("The ID of the email to archive"),
+      },
+      async ({ emailId }) => {
+        const moved = await this.microsoftService.archiveEmail(emailId);
+        return this.formatResponse("Email archived", moved);
       }
     );
 
