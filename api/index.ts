@@ -162,7 +162,8 @@ export default new Hono<{ Bindings: Env }>()
     )
   )
 
-  .use("/webhooks", webhookAuthMiddleware)
+  // ensure the webhook is authenticated
+  .use("/webhooks/*", webhookAuthMiddleware)
   .route(
     "/webhooks",
     new Hono()
