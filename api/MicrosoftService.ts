@@ -495,17 +495,6 @@ export class MicrosoftService {
     return event;
   }
 
-  async getInboxEmails() {
-    const emailsRaw = await this.makeRequest<unknown>(
-      `${this.baseUrl}/me/mailFolders('Inbox')/messages`,
-      {
-        method: "GET",
-      }
-    );
-    const emails = EmailSchema.parse(emailsRaw);
-    return emails;
-  }
-
   async searchEmails(
     folder: "inbox" | "sentitems" | "drafts",
     startDate: string,
