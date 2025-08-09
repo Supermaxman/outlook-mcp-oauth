@@ -200,6 +200,18 @@ export default new Hono<{ Bindings: Env }>()
 
       // Lifecycle notifications (e.g., reauthorizationRequired, subscriptionRemoved)
       .post("/email-lifecycle", async (c) => {
+        const url = new URL(c.req.url);
+        const validationToken = url.searchParams.get("validationToken");
+        // Validation challenge from Microsoft Graph
+        if (validationToken) {
+          const response: WebhookResponse = {
+            reqResponseCode: 200,
+            reqResponseContent: validationToken,
+            reqResponseContentType: "text",
+          };
+
+          return c.json(response);
+        }
         const body = await c.req.json();
         const clientState = body?.value?.[0]?.clientState;
         if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
