@@ -3,6 +3,8 @@ import { decodeJwt } from "jose";
 import {
   CalendarEventSchema,
   CalendarEventStrict,
+  EmailSchema,
+  EmailMessageSchema,
 } from "./lib/microsoft-types";
 
 export interface DateTimeWithZone {
@@ -212,12 +214,14 @@ export class MicrosoftService {
   private refreshToken: string;
   private baseUrl = "https://graph.microsoft.com/v1.0";
   private userId: string;
+  private webhookSecret: string;
 
   constructor(env: Env, accessToken: string, refreshToken: string) {
     this.env = env;
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
     this.userId = this.extractUserId(accessToken);
+    this.webhookSecret = env.MICROSOFT_WEBHOOK_SECRET;
   }
 
   private async makeRequest<T>(
@@ -484,5 +488,82 @@ export class MicrosoftService {
     );
     const event = CalendarEventSchema.parse(eventRaw);
     return event;
+  }
+
+  async getInboxEmails() {
+    const emailsRaw = await this.makeRequest<unknown>(
+      `${this.baseUrl}/me/mailFolders('Inbox')/messages`,
+      {
+        method: "GET",
+      }
+    );
+    const emails = EmailSchema.parse(emailsRaw);
+    return emails;
+  }
+
+  async getEmail(emailId: string) {
+    const emailRaw = await this.makeRequest<unknown>(
+      `${this.baseUrl}/me/messages/${emailId}`,
+      {
+        method: "GET",
+      }
+    );
+    const email = EmailMessageSchema.parse(emailRaw);
+    return email;
+  }
+
+  async draftEmail(
+    subject: string,
+    body: string,
+    toRecipients: string[],
+    ccRecipients?: string[],
+    bccRecipients?: string[]
+  ) {
+    const draftData = {
+      subject,
+      body: { contentType: "text" as const, content: body },
+      toRecipients: toRecipients.map((address) => ({
+        emailAddress: { address },
+      })),
+      ccRecipients:
+        ccRecipients && ccRecipients.length > 0
+          ? ccRecipients.map((address) => ({ emailAddress: { address } }))
+          : undefined,
+      bccRecipients:
+        bccRecipients && bccRecipients.length > 0
+          ? bccRecipients.map((address) => ({ emailAddress: { address } }))
+          : undefined,
+    };
+
+    const emailRaw = await this.makeRequest<unknown>(
+      `${this.baseUrl}/me/messages`,
+      {
+        method: "POST",
+        body: JSON.stringify(draftData),
+      }
+    );
+    const email = EmailMessageSchema.parse(emailRaw);
+    return email;
+  }
+
+  async createSubscription() {
+    // add 6 days to the current date (max allowed is 7 days)
+    const expirationDateTime = new Date(Date.now() + 1000 * 60 * 60 * 24 * 6);
+    await this.makeRequest<unknown>(`${this.baseUrl}/subscriptions`, {
+      method: "POST",
+      body: JSON.stringify({
+        changeType: "created",
+        clientState: this.webhookSecret,
+        // TODO: make this dynamic and configurable
+        notificationUrl:
+          "https://chat.aiescape.io/api/webhooks/outlook-email-notify",
+        // TODO add this so we can refresh the subscription
+        // lifecycleNotificationUrl: "",
+        resource: "/me/mailFolders('Inbox')/messages",
+        expirationDateTime: expirationDateTime.toISOString(),
+        // TODO: add this so we can get the resource data
+        // includeResourceData: true,
+      }),
+    });
   }
 }

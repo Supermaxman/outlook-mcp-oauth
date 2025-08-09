@@ -239,6 +239,72 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       }
     );
 
+    server.tool(
+      "getInboxEmails",
+      "Get the user's inbox emails",
+      {},
+      async () => {
+        const emails = await this.microsoftService.getInboxEmails();
+        return this.formatResponse("Inbox emails retrieved", emails);
+      }
+    );
+
+    server.tool(
+      "getEmail",
+      "Get a single email by its ID",
+      {
+        emailId: z.string().describe("The ID of the email to retrieve"),
+      },
+      async ({ emailId }) => {
+        const email = await this.microsoftService.getEmail(emailId);
+        return this.formatResponse("Email retrieved", email);
+      }
+    );
+
+    server.tool(
+      "draftEmail",
+      "Create a draft email with recipients, subject, and plaintext body",
+      {
+        subject: z.string().describe("The subject of the draft email"),
+        body: z
+          .string()
+          .describe("The body of the draft email in plaintext (no HTML)"),
+        toRecipients: z
+          .array(z.string())
+          .min(1)
+          .describe("List of recipient email addresses for the To field"),
+        ccRecipients: z
+          .array(z.string())
+          .optional()
+          .describe("Optional list of CC recipient email addresses"),
+        bccRecipients: z
+          .array(z.string())
+          .optional()
+          .describe("Optional list of BCC recipient email addresses"),
+      },
+      async ({ subject, body, toRecipients, ccRecipients, bccRecipients }) => {
+        const draft = await this.microsoftService.draftEmail(
+          subject,
+          body,
+          toRecipients,
+          ccRecipients,
+          bccRecipients
+        );
+        return this.formatResponse("Draft email created", draft);
+      }
+    );
+
+    server.tool(
+      "createSubscription",
+      "Create a subscription to a resource and set up a webhook to receive notifications when the resource changes.",
+      async () => {
+        await this.microsoftService.createSubscription();
+        return this.formatResponse("Subscription created", {
+          success: true,
+        });
+      }
+    );
+
     return server;
   }
 }

@@ -74,3 +74,85 @@ export const CalendarEventSchema = z
   .strip(); // <-- ✨ rejects *any* unknown keys
 
 export type CalendarEventStrict = z.infer<typeof CalendarEventSchema>;
+
+/* --------------------------------- email schema -------------------------------- */
+
+const EmailAddressSchema = z
+  .object({
+    name: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+  })
+  .strip();
+
+const RecipientSchema = z
+  .object({
+    emailAddress: EmailAddressSchema,
+  })
+  .strip();
+
+const ItemBodySchema = z
+  .object({
+    contentType: z.union([z.literal("html"), z.literal("text")]).optional(),
+    content: z.string().nullable().optional(),
+  })
+  .strip();
+
+export const EmailMessageSchema = z
+  .object({
+    /* identifiers & timestamps */
+    id: z.string(),
+    createdDateTime: z.string().optional(),
+    lastModifiedDateTime: z.string().optional(),
+    changeKey: z.string().optional(),
+
+    /* classification & flags */
+    categories: z.array(z.string()).optional(),
+    receivedDateTime: z.string().optional(),
+    sentDateTime: z.string().optional(),
+    hasAttachments: z.boolean().optional(),
+    internetMessageId: z.string().nullable().optional(),
+    importance: z
+      .union([z.literal("low"), z.literal("normal"), z.literal("high")])
+      .optional(),
+    inferenceClassification: z.string().optional(),
+
+    /* core content */
+    subject: z.string().nullable().optional(),
+    bodyPreview: z.string().optional(),
+    body: ItemBodySchema.optional(),
+
+    /* read state */
+    isRead: z.boolean().optional(),
+    isDraft: z.boolean().optional(),
+    isReadReceiptRequested: z.boolean().optional(),
+    isDeliveryReceiptRequested: z.boolean().optional(),
+
+    /* web link */
+    webLink: z.string().url().optional(),
+
+    /* conversation & folder */
+    parentFolderId: z.string().optional(),
+    conversationId: z.string().optional(),
+
+    /* participants */
+    from: RecipientSchema.optional(),
+    sender: RecipientSchema.optional(),
+    toRecipients: z.array(RecipientSchema).optional(),
+    ccRecipients: z.array(RecipientSchema).optional(),
+    bccRecipients: z.array(RecipientSchema).optional(),
+    replyTo: z.array(RecipientSchema).optional(),
+
+    /* misc fields we do not strictly validate right now */
+    flag: z.any().optional(),
+    attachments: z.any().optional(),
+    internetMessageHeaders: z.any().optional(),
+  })
+  .strip();
+
+/* OData page wrapper for list messages endpoint */
+export const EmailSchema = z
+  .object({
+    value: z.array(EmailMessageSchema),
+    "@odata.nextLink": z.string().url().optional(),
+  })
+  .strip();
