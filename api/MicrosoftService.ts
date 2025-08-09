@@ -799,4 +799,20 @@ export class MicrosoftService {
       }),
     });
   }
+
+  async refreshSubscription(subscriptionId: string) {
+    const expirationMinutes = 4230;
+    const expirationDateTime = new Date(
+      Date.now() + expirationMinutes * 60 * 1000
+    );
+    await this.makeRequest<unknown>(
+      `${this.baseUrl}/subscriptions/${subscriptionId}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expirationDateTime: expirationDateTime.toISOString(),
+        }),
+      }
+    );
+  }
 }

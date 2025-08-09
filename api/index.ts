@@ -217,14 +217,21 @@ export default new Hono<{ Bindings: Env }>()
         if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
           return c.json({ error: "Invalid client state" }, 401);
         }
-        // TODO: handle the webhook and actually refresh the subscription
-        // TODO will need the oauth token to refresh the subscription
-
+        // types of events:
+        // - subscriptionRenewalRequired (need to refresh the subscription)
+        // - missedNotifications (sign to run delta, but ok to ignore here for now)
+        // - subscriptionRemoved (create new subscription)
+        // - reauthorizationRequired (need to re-auth with oauth, leave this up to the UI)
         // no need to respond with any prompt info to the agent
         const response: WebhookResponse = {
           reqResponseCode: 202,
           reqResponseContent: JSON.stringify({ ok: true }),
           reqResponseContentType: "json",
+          promptContent: `Outlook email lifecycle notification received:\n\n\`\`\`json\n${JSON.stringify(
+            body,
+            null,
+            2
+          )}\n\`\`\``,
         };
 
         return c.json(response);

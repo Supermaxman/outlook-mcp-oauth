@@ -469,6 +469,22 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       }
     );
 
+    server.tool(
+      "refreshSubscription",
+      "Refresh a subscription to a resource to avoid it expiring.",
+      {
+        subscriptionId: z
+          .string()
+          .describe("The ID of the subscription to refresh"),
+      },
+      async ({ subscriptionId }) => {
+        await this.microsoftService.refreshSubscription(subscriptionId);
+        return this.formatResponse("Subscription refreshed", {
+          success: true,
+        });
+      }
+    );
+
     return server;
   }
 }
