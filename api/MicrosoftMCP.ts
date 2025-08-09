@@ -326,28 +326,107 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           .array(z.string())
           .optional()
           .describe("Optional list of BCC recipient email addresses"),
-        conversationId: z
-          .string()
-          .optional()
-          .describe("Optional conversation ID to reply to"),
       },
-      async ({
-        subject,
-        body,
-        toRecipients,
-        ccRecipients,
-        bccRecipients,
-        conversationId,
-      }) => {
+      async ({ subject, body, toRecipients, ccRecipients, bccRecipients }) => {
         const draft = await this.microsoftService.draftEmail(
           subject,
           body,
           toRecipients,
           ccRecipients,
-          bccRecipients,
-          conversationId
+          bccRecipients
         );
         return this.formatResponse("Draft email created", draft);
+      }
+    );
+
+    server.tool(
+      "createReplyDraft",
+      "Create a reply (or reply-all) draft to an existing email. This ensures proper threading in Outlook.",
+      {
+        originalEmailId: z
+          .string()
+          .describe("The ID of the original email to reply to"),
+        replyAll: z
+          .boolean()
+          .optional()
+          .default(false)
+          .describe("Whether to reply to all recipients"),
+        comment: z
+          .string()
+          .optional()
+          .describe("Optional comment/plaintext that pre-fills the reply body"),
+      },
+      async ({ originalEmailId, replyAll, comment }) => {
+        const draft = await this.microsoftService.createReplyDraft(
+          originalEmailId,
+          replyAll,
+          comment
+        );
+        return this.formatResponse("Reply draft created", draft);
+      }
+    );
+
+    server.tool(
+      "updateEmailDraft",
+      "Update fields of an existing email draft (subject, body, recipients).",
+      {
+        emailId: z.string().describe("The ID of the draft email to update"),
+        subject: z.string().optional().describe("New subject"),
+        body: z.string().optional().describe("New plaintext body"),
+        toRecipients: z
+          .array(z.string())
+          .optional()
+          .describe("Replace the To recipients list"),
+        ccRecipients: z
+          .array(z.string())
+          .optional()
+          .describe("Replace the CC recipients list"),
+        bccRecipients: z
+          .array(z.string())
+          .optional()
+          .describe("Replace the BCC recipients list"),
+      },
+      async ({
+        emailId,
+        subject,
+        body,
+        toRecipients,
+        ccRecipients,
+        bccRecipients,
+      }) => {
+        const updated = await this.microsoftService.updateEmailDraft(
+          emailId,
+          subject,
+          body,
+          toRecipients,
+          ccRecipients,
+          bccRecipients
+        );
+        return this.formatResponse("Draft updated", updated);
+      }
+    );
+
+    server.tool(
+      "sendEmail",
+      "Send a draft email by ID.",
+      {
+        emailId: z.string().describe("The ID of the draft email to send"),
+      },
+      async ({ emailId }) => {
+        await this.microsoftService.sendEmail(emailId);
+        return this.formatResponse("Email sent", { emailId });
+      }
+    );
+
+    server.tool(
+      "deleteEmail",
+      "Delete an email by ID (draft or message).",
+      {
+        emailId: z.string().describe("The ID of the email to delete"),
+      },
+      async ({ emailId }) => {
+        await this.microsoftService.deleteEmail(emailId);
+        return this.formatResponse("Email deleted", { emailId });
       }
     );
 

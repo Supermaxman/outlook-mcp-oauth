@@ -636,8 +636,7 @@ export class MicrosoftService {
     body: string,
     toRecipients: string[],
     ccRecipients?: string[],
-    bccRecipients?: string[],
-    conversationId?: string
+    bccRecipients?: string[]
   ) {
     const draftData = {
       subject,
@@ -653,7 +652,6 @@ export class MicrosoftService {
         bccRecipients && bccRecipients.length > 0
           ? bccRecipients.map((address) => ({ emailAddress: { address } }))
           : undefined,
-      conversationId: conversationId ?? undefined,
     };
 
     const emailRaw = await this.makeRequest<unknown>(
@@ -665,6 +663,79 @@ export class MicrosoftService {
     );
     const email = EmailMessageSchema.parse(emailRaw);
     return email;
+  }
+
+  async createReplyDraft(
+    originalEmailId: string,
+    replyAll: boolean = false,
+    comment?: string
+  ) {
+    const path = replyAll
+      ? `${this.baseUrl}/me/messages/${originalEmailId}/createReplyAll`
+      : `${this.baseUrl}/me/messages/${originalEmailId}/createReply`;
+
+    const payload = comment ? { comment } : undefined;
+
+    const draftRaw = await this.makeRequest<unknown>(path, {
+      method: "POST",
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+    const draft = EmailMessageSchema.parse(draftRaw);
+    return draft;
+  }
+
+  async updateEmailDraft(
+    emailId: string,
+    subject?: string,
+    body?: string,
+    toRecipients?: string[],
+    ccRecipients?: string[],
+    bccRecipients?: string[]
+  ) {
+    const updateData = {
+      subject: subject ?? undefined,
+      body: body ? { contentType: "text" as const, content: body } : undefined,
+      toRecipients:
+        toRecipients !== undefined
+          ? toRecipients.map((address) => ({ emailAddress: { address } }))
+          : undefined,
+      ccRecipients:
+        ccRecipients !== undefined
+          ? ccRecipients.map((address) => ({ emailAddress: { address } }))
+          : undefined,
+      bccRecipients:
+        bccRecipients !== undefined
+          ? bccRecipients.map((address) => ({ emailAddress: { address } }))
+          : undefined,
+    };
+
+    const emailRaw = await this.makeRequest<unknown>(
+      `${this.baseUrl}/me/messages/${emailId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(updateData),
+      }
+    );
+    const email = EmailMessageSchema.parse(emailRaw);
+    return email;
+  }
+
+  async sendEmail(emailId: string) {
+    await this.makeRequestIgnoreResponse(
+      `${this.baseUrl}/me/messages/${emailId}/send`,
+      {
+        method: "POST",
+      }
+    );
+  }
+
+  async deleteEmail(emailId: string) {
+    await this.makeRequestIgnoreResponse(
+      `${this.baseUrl}/me/messages/${emailId}`,
+      {
+        method: "DELETE",
+      }
+    );
   }
 
   async createSubscription() {
