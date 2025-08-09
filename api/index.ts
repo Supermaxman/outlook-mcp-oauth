@@ -4,6 +4,7 @@ import {
   getMicrosoftAuthEndpoint,
   exchangeCodeForToken,
   refreshAccessToken,
+  webhookAuthMiddleware,
 } from "./lib/microsoft-auth.ts";
 import { cors } from "hono/cors";
 import { Hono } from "hono";
@@ -158,6 +159,18 @@ export default new Hono<{ Bindings: Env }>()
       "/",
       MicrosoftMCP.serve("/mcp", { binding: "MICROSOFT_MCP_OBJECT" }).fetch
     )
+  )
+
+  .use("/webhooks", webhookAuthMiddleware)
+  .route(
+    "/webhooks",
+    new Hono().post("/outlook-email-notify", async (c) => {
+      const body = await c.req.json();
+      console.log(body);
+      // TODO: handle the webhook and actually refresh the subscription
+
+      return c.json({ success: true });
+    })
   )
 
   // Health check endpoint

@@ -101,51 +101,51 @@ export const EmailMessageSchema = z
   .object({
     /* identifiers & timestamps */
     id: z.string(),
-    createdDateTime: z.string().optional(),
-    lastModifiedDateTime: z.string().optional(),
-    changeKey: z.string().optional(),
+    createdDateTime: z.string().nullish(),
+    lastModifiedDateTime: z.string().nullish(),
+    changeKey: z.string().nullish(),
 
     /* classification & flags */
-    categories: z.array(z.string()).optional(),
-    receivedDateTime: z.string().optional(),
-    sentDateTime: z.string().optional(),
-    hasAttachments: z.boolean().optional(),
-    internetMessageId: z.string().nullable().optional(),
+    categories: z.array(z.string()).nullish(),
+    receivedDateTime: z.string().nullish(),
+    sentDateTime: z.string().nullish(),
+    hasAttachments: z.boolean().nullish(),
+    internetMessageId: z.string().nullish(),
     importance: z
       .union([z.literal("low"), z.literal("normal"), z.literal("high")])
-      .optional(),
-    inferenceClassification: z.string().optional(),
+      .nullish(),
+    inferenceClassification: z.string().nullish(),
 
     /* core content */
-    subject: z.string().nullable().optional(),
-    bodyPreview: z.string().optional(),
-    body: ItemBodySchema.optional(),
+    subject: z.string().nullish(),
+    bodyPreview: z.string().nullish(),
+    body: ItemBodySchema.nullish(),
 
     /* read state */
-    isRead: z.boolean().optional(),
-    isDraft: z.boolean().optional(),
-    isReadReceiptRequested: z.boolean().optional(),
-    isDeliveryReceiptRequested: z.boolean().optional(),
+    isRead: z.boolean().nullish(),
+    isDraft: z.boolean().nullish(),
+    isReadReceiptRequested: z.boolean().nullish(),
+    isDeliveryReceiptRequested: z.boolean().nullish(),
 
     /* web link */
-    webLink: z.string().url().optional(),
+    webLink: z.string().url().nullish(),
 
     /* conversation & folder */
-    parentFolderId: z.string().optional(),
-    conversationId: z.string().optional(),
+    parentFolderId: z.string().nullish(),
+    conversationId: z.string().nullish(),
 
     /* participants */
-    from: RecipientSchema.optional(),
-    sender: RecipientSchema.optional(),
-    toRecipients: z.array(RecipientSchema).optional(),
-    ccRecipients: z.array(RecipientSchema).optional(),
-    bccRecipients: z.array(RecipientSchema).optional(),
-    replyTo: z.array(RecipientSchema).optional(),
+    from: RecipientSchema.nullish(),
+    sender: RecipientSchema.nullish(),
+    toRecipients: z.array(RecipientSchema).nullish(),
+    ccRecipients: z.array(RecipientSchema).nullish(),
+    bccRecipients: z.array(RecipientSchema).nullish(),
+    replyTo: z.array(RecipientSchema).nullish(),
 
     /* misc fields we do not strictly validate right now */
-    flag: z.any().optional(),
-    attachments: z.any().optional(),
-    internetMessageHeaders: z.any().optional(),
+    flag: z.any().nullish(),
+    attachments: z.any().nullish(),
+    internetMessageHeaders: z.any().nullish(),
   })
   .strip();
 
@@ -153,6 +153,6 @@ export const EmailMessageSchema = z
 export const EmailSchema = z
   .object({
     value: z.array(EmailMessageSchema),
-    "@odata.nextLink": z.string().url().optional(),
+    "@odata.nextLink": z.string().url().nullish(),
   })
   .strip();

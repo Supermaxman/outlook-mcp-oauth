@@ -7,6 +7,8 @@ declare namespace Cloudflare {
     MICROSOFT_CLIENT_SECRET: string;
     MICROSOFT_TENANT_ID: string;
     MICROSOFT_WEBHOOK_SECRET: string;
+    MICROSOFT_WEBHOOK_NOTIFY_URL: string;
+    MICROSOFT_WEBHOOK_REFRESH_URL: string;
     MICROSOFT_MCP_OBJECT: DurableObjectNamespace<
       import("./api/index").MicrosoftMCP
     >;

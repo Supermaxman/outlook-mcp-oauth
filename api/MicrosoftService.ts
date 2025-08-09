@@ -214,14 +214,12 @@ export class MicrosoftService {
   private refreshToken: string;
   private baseUrl = "https://graph.microsoft.com/v1.0";
   private userId: string;
-  private webhookSecret: string;
 
   constructor(env: Env, accessToken: string, refreshToken: string) {
     this.env = env;
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
     this.userId = this.extractUserId(accessToken);
-    this.webhookSecret = env.MICROSOFT_WEBHOOK_SECRET;
   }
 
   private async makeRequest<T>(
@@ -562,12 +560,9 @@ export class MicrosoftService {
       method: "POST",
       body: JSON.stringify({
         changeType: "created",
-        clientState: this.webhookSecret,
-        // TODO: make this dynamic and configurable
-        notificationUrl:
-          "https://chat.aiescape.io/api/webhooks/outlook-email-notify",
-        // TODO add this so we can refresh the subscription
-        // lifecycleNotificationUrl: "",
+        clientState: this.env.MICROSOFT_WEBHOOK_SECRET,
+        notificationUrl: `${this.env.MICROSOFT_WEBHOOK_NOTIFY_URL}/outlook-email-notify`,
+        lifecycleNotificationUrl: `${this.env.MICROSOFT_WEBHOOK_REFRESH_URL}/outlook-email-notify`,
         resource: "/me/mailFolders('Inbox')/messages",
         expirationDateTime: expirationDateTime.toISOString(),
         // TODO: add this so we can get the resource data

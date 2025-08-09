@@ -22,6 +22,22 @@ export const microsoftBearerTokenAuthMiddleware = createMiddleware<{
   await next();
 });
 
+/* ---------- Webhook auth middleware ---------- */
+
+export const webhookAuthMiddleware = createMiddleware<{
+  Bindings: Env;
+}>(async (c, next) => {
+  const body = await c.req.json();
+  const clientState = body?.value?.[0]?.clientState;
+  if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
+    throw new HTTPException(401, {
+      message: "Invalid client state",
+    });
+  }
+
+  await next();
+});
+
 /* ---------- Helpers ---------- */
 
 export const MICROSOFT_GRAPH_DEFAULT_SCOPES = [
