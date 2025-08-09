@@ -376,17 +376,19 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           .boolean()
           .optional()
           .default(false)
-          .describe("Whether to reply to all recipients"),
-        comment: z
+          .describe("Whether to reply to all recipients or just the sender"),
+        body: z
           .string()
           .optional()
-          .describe("Optional comment/plaintext that pre-fills the reply body"),
+          .describe(
+            "Optional plaintext body to set on the draft after creating the reply"
+          ),
       },
-      async ({ originalEmailId, replyAll, comment }) => {
+      async ({ originalEmailId, replyAll, body }) => {
         const draft = await this.microsoftService.createReplyDraft(
           originalEmailId,
           replyAll,
-          comment
+          body
         );
         return this.formatResponse("Reply draft created", draft);
       }

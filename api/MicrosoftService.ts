@@ -670,20 +670,36 @@ export class MicrosoftService {
   async createReplyDraft(
     originalEmailId: string,
     replyAll: boolean = false,
-    comment?: string
+    body?: string
   ) {
     const path = replyAll
       ? `${this.baseUrl}/me/messages/${originalEmailId}/createReplyAll`
       : `${this.baseUrl}/me/messages/${originalEmailId}/createReply`;
 
-    const payload = comment ? { comment } : undefined;
-
+    // Create the reply draft WITHOUT comment so we can control HTML formatting
     const draftRaw = await this.makeRequest<unknown>(path, {
       method: "POST",
-      body: payload ? JSON.stringify(payload) : undefined,
     });
     const draft = EmailMessageSchema.parse(draftRaw);
-    return draft;
+
+    if (!body) {
+      return draft;
+    }
+
+    const updatedRaw = await this.makeRequest<unknown>(
+      `${this.baseUrl}/me/messages/${draft.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          body: {
+            contentType: "text",
+            content: body,
+          },
+        }),
+      }
+    );
+    const updated = EmailMessageSchema.parse(updatedRaw);
+    return updated;
   }
 
   async updateEmailDraft(
