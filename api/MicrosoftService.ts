@@ -779,7 +779,7 @@ export class MicrosoftService {
     return moved;
   }
 
-  async createSubscription() {
+  async createSubscription(serverName: string) {
     // max allowed for message subscriptions is 4230 minutes (~2.94 days)
     const expirationMinutes = 4230;
     const expirationDateTime = new Date(
@@ -790,8 +790,8 @@ export class MicrosoftService {
       body: JSON.stringify({
         changeType: "created",
         clientState: this.env.MICROSOFT_WEBHOOK_SECRET,
-        notificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/email-notify`,
-        lifecycleNotificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/email-lifecycle`,
+        notificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/${serverName}/email-notify`,
+        lifecycleNotificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/${serverName}/email-lifecycle`,
         resource: "/me/mailFolders('Inbox')/messages",
         expirationDateTime: expirationDateTime.toISOString(),
         // TODO: add this so we can get the resource data

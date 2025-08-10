@@ -461,8 +461,15 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
     server.tool(
       "createSubscription",
       "Create a subscription to a resource and set up a webhook to receive notifications when the resource changes.",
-      async () => {
-        await this.microsoftService.createSubscription();
+      {
+        serverName: z
+          .string()
+          .describe(
+            "The name of the MCP server to create the subscription for. This is used to identify the server in the webhook URL."
+          ),
+      },
+      async ({ serverName }) => {
+        await this.microsoftService.createSubscription(serverName);
         return this.formatResponse("Subscription created", {
           success: true,
         });
