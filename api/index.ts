@@ -188,13 +188,16 @@ export default new Hono<{ Bindings: Env }>()
         if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
           return c.json({ error: "Invalid client state" }, 401);
         }
-
         const resourceId = bodyValue.resourceData?.id;
         if (!resourceId) {
           return c.json({ error: "No resource id" }, 400);
         }
+        // name for the email, so the agent can use it to identify the email account
+        // from header
+        const name = c.req.header("x-mcp-name") ?? "outlook";
 
         const respData = {
+          name,
           emailId: resourceId,
         };
 
@@ -227,7 +230,11 @@ export default new Hono<{ Bindings: Env }>()
           return c.json(response);
         }
         const body = await c.req.json();
-        const clientState = body?.value?.[0]?.clientState;
+        const bodyValue = body.value[0];
+        if (!bodyValue) {
+          return c.json({ error: "No body value" }, 400);
+        }
+        const clientState = bodyValue.clientState;
         if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
           return c.json({ error: "Invalid client state" }, 401);
         }
@@ -237,13 +244,24 @@ export default new Hono<{ Bindings: Env }>()
         // - subscriptionRemoved (create new subscription)
         // - reauthorizationRequired (need to re-auth with oauth, leave this up to the UI)
         // no need to respond with any prompt info to the agent
-        // TODO do a little more processing here to just get the subscription id and event type
+
+        // get the subscription id, the event type, and the name
+        const subscriptionId = bodyValue.subscriptionId;
+        const eventType = bodyValue.lifecycleEvent;
+        const name = c.req.header("x-mcp-name") ?? "outlook";
+
+        const respData = {
+          name,
+          eventType,
+          subscriptionId,
+        };
+
         const response: WebhookResponse = {
           reqResponseCode: 202,
           reqResponseContent: JSON.stringify({ ok: true }),
           reqResponseContentType: "json",
           promptContent: `Outlook email lifecycle notification received:\n\n\`\`\`json\n${JSON.stringify(
-            body,
+            respData,
             null,
             2
           )}\n\`\`\``,
