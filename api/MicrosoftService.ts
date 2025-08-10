@@ -790,6 +790,7 @@ export class MicrosoftService {
       body: JSON.stringify({
         changeType: "created",
         clientState: this.env.MICROSOFT_WEBHOOK_SECRET,
+        // /:server/:hook
         notificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/${serverName}/email-notify`,
         lifecycleNotificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/${serverName}/email-lifecycle`,
         resource: "/me/mailFolders('Inbox')/messages",
