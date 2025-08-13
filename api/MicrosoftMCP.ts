@@ -14,11 +14,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
   }
 
   get microsoftService() {
-    return new MicrosoftService(
-      this.env,
-      this.props.accessToken,
-      this.props.refreshToken
-    );
+    return new MicrosoftService(this.env, this.props.accessToken);
   }
 
   formatResponse = (

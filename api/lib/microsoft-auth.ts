@@ -1,5 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
+import { decode } from "hono/jwt";
 
 /* ---------- Bearer-token middleware ---------- */
 
@@ -20,10 +21,17 @@ export const microsoftBearerTokenAuthMiddleware = createMiddleware<{
 
   // Slice off "Bearer "
   const accessToken = auth.slice(7);
-  const refreshToken = c.req.header("X-Microsoft-Refresh-Token");
-  if (!refreshToken) {
+
+  // check if the access token is expired
+  // gives header and payload
+  const decodedToken = decode(accessToken);
+  // make sure the token is not expired or about to expire within 1 minute
+  if (
+    decodedToken.payload.exp &&
+    decodedToken.payload.exp < Date.now() / 1000 + 60
+  ) {
     throw new HTTPException(401, {
-      message: "Missing or invalid refresh token",
+      message: "Access token expired",
     });
   }
 

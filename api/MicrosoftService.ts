@@ -212,14 +212,12 @@ type ODataPage<T> = {
 export class MicrosoftService {
   private env: Env;
   private accessToken: string;
-  private refreshToken: string;
   private baseUrl = "https://graph.microsoft.com/v1.0";
   private userId: string;
 
-  constructor(env: Env, accessToken: string, refreshToken: string) {
+  constructor(env: Env, accessToken: string) {
     this.env = env;
     this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
     this.userId = this.extractUserId(accessToken);
   }
 
@@ -236,21 +234,6 @@ export class MicrosoftService {
           ...options.headers,
         },
       });
-
-      if (response.status === 401) {
-        // Token expired, try to refresh
-        await this.refreshAccessToken();
-
-        // Retry the request with new token
-        return fetch(url, {
-          ...options,
-          headers: {
-            Authorization: `Bearer ${this.accessToken}`,
-            "Content-Type": "application/json",
-            ...options.headers,
-          },
-        }).then((res) => res.json());
-      }
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
@@ -283,21 +266,6 @@ export class MicrosoftService {
         },
       });
 
-      if (response.status === 401) {
-        // Token expired, try to refresh
-        await this.refreshAccessToken();
-
-        // Retry the request with new token
-        return fetch(url, {
-          ...options,
-          headers: {
-            Authorization: `Bearer ${this.accessToken}`,
-            "Content-Type": "application/json",
-            ...options.headers,
-          },
-        }).then((res) => res.json());
-      }
-
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
         throw new Error(
@@ -310,39 +278,6 @@ export class MicrosoftService {
       console.error("Microsoft API request failed:", error);
       throw error;
     }
-  }
-
-  private async refreshAccessToken(): Promise<void> {
-    const body = new URLSearchParams({
-      client_id: this.env.MICROSOFT_CLIENT_ID,
-      client_secret: this.env.MICROSOFT_CLIENT_SECRET,
-      grant_type: "refresh_token",
-      refresh_token: this.refreshToken,
-      scope:
-        "openid profile email offline_access Calendars.ReadWrite Mail.ReadWrite Mail.Send User.Read People.Read",
-    });
-
-    const res = await fetch(
-      // use the same tenant you passed to the original exchange
-      `https://login.microsoftonline.com/${this.env.MICROSOFT_TENANT_ID}/oauth2/v2.0/token`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error(`Failed to refresh access token: ${await res.text()}`);
-    }
-
-    const { access_token, refresh_token } = (await res.json()) as {
-      access_token: string;
-      refresh_token?: string;
-    };
-
-    this.accessToken = access_token;
-    if (refresh_token) this.refreshToken = refresh_token;
   }
 
   extractUserId(accessToken: string): string {

@@ -34,7 +34,6 @@ type AuthenticationContext = {
 // Context from the Microsoft OAuth process
 export type MicrosoftAuthContext = {
   accessToken: string;
-  refreshToken: string;
   expiresIn?: number;
   tokenType?: string;
   scope?: string;
