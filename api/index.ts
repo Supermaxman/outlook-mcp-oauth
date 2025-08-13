@@ -40,7 +40,7 @@ export default new Hono<{ Bindings: Env }>()
       response_modes_supported: ["query"],
       grant_types_supported: ["authorization_code", "refresh_token"],
       token_endpoint_auth_methods_supported: ["none"],
-      code_challenge_methods_supported: ["S256"],
+      code_challenge_methods_supported: ["S256", "plain"],
       scopes_supported: [
         "openid",
         "profile",
@@ -109,16 +109,17 @@ export default new Hono<{ Bindings: Env }>()
       }
     });
 
-    // Ensure PKCE method defaults to S256 when a challenge is provided without a method
-    if (
-      microsoftAuthUrl.searchParams.has("code_challenge") &&
-      !microsoftAuthUrl.searchParams.has("code_challenge_method")
-    ) {
-      microsoftAuthUrl.searchParams.set("code_challenge_method", "S256");
-    }
-
     // Use our Microsoft app's client_id
     microsoftAuthUrl.searchParams.set("client_id", c.env.MICROSOFT_CLIENT_ID);
+
+    const m = microsoftAuthUrl.searchParams.get("code_challenge_method"); // 'S256' | 'plain' | null
+    const cc = microsoftAuthUrl.searchParams.get("code_challenge");
+    const ru = microsoftAuthUrl.searchParams.get("redirect_uri");
+    console.log("PKCE authorize:", {
+      method: m,
+      code_challenge: cc?.slice(0, 8) + "…",
+      redirect_uri: ru,
+    });
 
     // Redirect to Microsoft's authorization page
     return c.redirect(microsoftAuthUrl.toString());
@@ -127,6 +128,11 @@ export default new Hono<{ Bindings: Env }>()
   // Token exchange endpoint
   .post("/token", async (c) => {
     const body = await c.req.parseBody();
+    const cv = body.code_verifier as string | undefined;
+    console.log("PKCE token:", {
+      code_verifier_len: cv?.length,
+      redirect_uri: body.redirect_uri,
+    });
 
     if (body.grant_type === "authorization_code") {
       const result = await exchangeCodeForToken(
