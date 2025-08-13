@@ -97,6 +97,7 @@ export default new Hono<{ Bindings: Env }>()
   // Authorization endpoint - redirects to Microsoft
   .get("/authorize", async (c) => {
     const url = new URL(c.req.url);
+
     const microsoftAuthUrl = new URL(
       getMicrosoftAuthEndpoint(c.env.MICROSOFT_TENANT_ID, "authorize")
     );
