@@ -36,7 +36,7 @@ export const microsoftBearerTokenAuthMiddleware = createMiddleware<{
   }
 
   // @ts-expect-error  – Cloudflare Workers executionCtx props
-  c.executionCtx.props = { accessToken, refreshToken };
+  c.executionCtx.props = { accessToken };
   await next();
 });
 
