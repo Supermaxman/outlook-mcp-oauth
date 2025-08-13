@@ -9,11 +9,13 @@ export const microsoftBearerTokenAuthMiddleware = createMiddleware<{
 }>(async (c, next) => {
   const auth = c.req.header("Authorization");
   if (!auth) {
+    c.header("WWW-Authenticate", 'Bearer realm="api"');
     throw new HTTPException(401, {
       message: "Missing or invalid access token",
     });
   }
   if (!auth.startsWith("Bearer ")) {
+    c.header("WWW-Authenticate", 'Bearer realm="api"');
     throw new HTTPException(401, {
       message: "Missing or invalid access token",
     });
@@ -30,6 +32,12 @@ export const microsoftBearerTokenAuthMiddleware = createMiddleware<{
     decodedToken.payload.exp &&
     decodedToken.payload.exp < Date.now() / 1000 + 60
   ) {
+    c.header(
+      "WWW-Authenticate",
+      'Bearer error="invalid_token", error_description="The access token expired"'
+    );
+    c.header("Cache-Control", "no-store");
+    c.header("Pragma", "no-cache");
     throw new HTTPException(401, {
       message: "Access token expired",
     });
@@ -60,6 +68,17 @@ export function getMicrosoftAuthEndpoint(
   endpoint: "authorize" | "token"
 ): string {
   return `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/${endpoint}`;
+}
+
+export class OAuthHttpError extends Error {
+  status: number;
+  body: unknown;
+  constructor(message: string, status: number, body: unknown) {
+    super(message);
+    this.name = "OAuthHttpError";
+    this.status = status;
+    this.body = body;
+  }
 }
 
 type TokenResponse = {
@@ -106,7 +125,22 @@ export async function exchangeCodeForToken(
     body,
   });
 
-  if (!res.ok) throw new Error(`Token exchange failed: ${await res.text()}`);
+  if (!res.ok) {
+    const isJson = (res.headers.get("content-type") || "").includes(
+      "application/json"
+    );
+    const errorBody = isJson
+      ? await res.json().catch(() => ({ error: "server_error" }))
+      : {
+          error: "server_error",
+          error_description: await res.text().catch(() => ""),
+        };
+    throw new OAuthHttpError(
+      "Token exchange failed",
+      res.status || 400,
+      errorBody
+    );
+  }
   return res.json() as Promise<TokenResponse>;
 }
 
@@ -133,6 +167,17 @@ export async function refreshAccessToken(
     body,
   });
 
-  if (!res.ok) throw new Error(`Refresh failed: ${await res.text()}`);
+  if (!res.ok) {
+    const isJson = (res.headers.get("content-type") || "").includes(
+      "application/json"
+    );
+    const errorBody = isJson
+      ? await res.json().catch(() => ({ error: "server_error" }))
+      : {
+          error: "server_error",
+          error_description: await res.text().catch(() => ""),
+        };
+    throw new OAuthHttpError("Refresh failed", res.status || 400, errorBody);
+  }
   return res.json() as Promise<TokenResponse>;
 }

@@ -27,6 +27,34 @@ const registeredClients = new Map<string, RegisteredClient>();
 
 export default new Hono<{ Bindings: Env }>()
   .use(cors())
+  .onError((err, c) => {
+    const e = err as unknown as {
+      status?: number;
+      wwwAuthenticate?: string;
+      message?: string;
+    };
+    if (e && e.status === 401) {
+      if (e.wwwAuthenticate) {
+        c.header("WWW-Authenticate", e.wwwAuthenticate);
+      } else {
+        c.header(
+          "WWW-Authenticate",
+          'Bearer error="invalid_token", error_description="The access token is invalid or expired"'
+        );
+      }
+      c.header("Cache-Control", "no-store");
+      c.header("Pragma", "no-cache");
+      return c.json(
+        {
+          error: "invalid_token",
+          error_description:
+            e.message || "The access token is invalid or expired",
+        },
+        401 as const
+      );
+    }
+    return c.json({ error: "server_error" }, 500 as const);
+  })
 
   // OAuth Authorization Server Discovery
   .get("/.well-known/oauth-authorization-server", async (c) => {
@@ -134,26 +162,64 @@ export default new Hono<{ Bindings: Env }>()
       redirect_uri: body.redirect_uri,
     });
 
-    if (body.grant_type === "authorization_code") {
-      const result = await exchangeCodeForToken(
-        body.code as string,
-        body.redirect_uri as string,
-        c.env.MICROSOFT_CLIENT_ID,
-        c.env.MICROSOFT_CLIENT_SECRET,
-        c.env.MICROSOFT_TENANT_ID,
-        body.code_verifier as string | undefined,
-        (body.scope as string | undefined) ||
-          (typeof body.scope === "string" ? (body.scope as string) : undefined)
-      );
-      return c.json(result);
-    } else if (body.grant_type === "refresh_token") {
-      const result = await refreshAccessToken(
-        body.refresh_token as string,
-        c.env.MICROSOFT_CLIENT_ID,
-        c.env.MICROSOFT_CLIENT_SECRET,
-        c.env.MICROSOFT_TENANT_ID
-      );
-      return c.json(result);
+    try {
+      if (body.grant_type === "authorization_code") {
+        const result = await exchangeCodeForToken(
+          body.code as string,
+          body.redirect_uri as string,
+          c.env.MICROSOFT_CLIENT_ID,
+          c.env.MICROSOFT_CLIENT_SECRET,
+          c.env.MICROSOFT_TENANT_ID,
+          body.code_verifier as string | undefined,
+          (body.scope as string | undefined) ||
+            (typeof body.scope === "string"
+              ? (body.scope as string)
+              : undefined)
+        );
+        return c.json(result);
+      } else if (body.grant_type === "refresh_token") {
+        const result = await refreshAccessToken(
+          body.refresh_token as string,
+          c.env.MICROSOFT_CLIENT_ID,
+          c.env.MICROSOFT_CLIENT_SECRET,
+          c.env.MICROSOFT_TENANT_ID
+        );
+        return c.json(result);
+      }
+    } catch (err) {
+      // Pass through OAuth errors from Microsoft
+      const e = err as unknown as {
+        status?: number;
+        body?: unknown;
+        name?: string;
+      };
+      if (e && e.name === "OAuthHttpError") {
+        const allowedStatuses = [
+          400, 401, 403, 404, 405, 409, 410, 415, 422, 429, 500, 502, 503, 504,
+        ] as const;
+        const statusCandidate = (e.status as number) || 400;
+        const status = (allowedStatuses as readonly number[]).includes(
+          statusCandidate
+        )
+          ? (statusCandidate as
+              | 400
+              | 401
+              | 403
+              | 404
+              | 405
+              | 409
+              | 410
+              | 415
+              | 422
+              | 429
+              | 500
+              | 502
+              | 503
+              | 504)
+          : (400 as const);
+        return c.json(e.body ?? { error: "invalid_request" }, { status });
+      }
+      throw err;
     }
 
     return c.json({ error: "unsupported_grant_type" }, 400);

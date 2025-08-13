@@ -237,6 +237,18 @@ export class MicrosoftService {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
+        // Propagate 401 so upstream can signal clients to refresh tokens
+        if (response.status === 401) {
+          const wwwAuth = response.headers.get("www-authenticate");
+          const err = new Error(
+            `Microsoft API error: 401 Unauthorized${
+              errorText ? ` - ${errorText}` : ""
+            }`
+          ) as Error & { status?: number; wwwAuthenticate?: string };
+          err.status = 401;
+          if (wwwAuth) err.wwwAuthenticate = wwwAuth;
+          throw err;
+        }
         throw new Error(
           `Microsoft API error: ${response.status} ${response.statusText}${
             errorText ? ` - ${errorText}` : ""
@@ -268,6 +280,17 @@ export class MicrosoftService {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => "");
+        if (response.status === 401) {
+          const wwwAuth = response.headers.get("www-authenticate");
+          const err = new Error(
+            `Microsoft API error: 401 Unauthorized${
+              errorText ? ` - ${errorText}` : ""
+            }`
+          ) as Error & { status?: number; wwwAuthenticate?: string };
+          err.status = 401;
+          if (wwwAuth) err.wwwAuthenticate = wwwAuth;
+          throw err;
+        }
         throw new Error(
           `Microsoft API error: ${response.status} ${response.statusText}${
             errorText ? ` - ${errorText}` : ""
