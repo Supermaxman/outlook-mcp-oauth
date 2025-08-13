@@ -6,7 +6,12 @@ import { HTTPException } from "hono/http-exception";
 export const microsoftBearerTokenAuthMiddleware = createMiddleware<{
   Bindings: Env;
 }>(async (c, next) => {
-  const auth = c.req.header("Authorization") ?? "";
+  const auth = c.req.header("Authorization");
+  if (!auth) {
+    throw new HTTPException(401, {
+      message: "Missing or invalid access token",
+    });
+  }
   if (!auth.startsWith("Bearer ")) {
     throw new HTTPException(401, {
       message: "Missing or invalid access token",
@@ -15,7 +20,12 @@ export const microsoftBearerTokenAuthMiddleware = createMiddleware<{
 
   // Slice off "Bearer "
   const accessToken = auth.slice(7);
-  const refreshToken = c.req.header("X-Microsoft-Refresh-Token") ?? "";
+  const refreshToken = c.req.header("X-Microsoft-Refresh-Token");
+  if (!refreshToken) {
+    throw new HTTPException(401, {
+      message: "Missing or invalid refresh token",
+    });
+  }
 
   // @ts-expect-error  – Cloudflare Workers executionCtx props
   c.executionCtx.props = { accessToken, refreshToken };
