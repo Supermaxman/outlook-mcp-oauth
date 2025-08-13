@@ -126,7 +126,9 @@ export default new Hono<{ Bindings: Env }>()
         c.env.MICROSOFT_CLIENT_ID,
         c.env.MICROSOFT_CLIENT_SECRET,
         c.env.MICROSOFT_TENANT_ID,
-        body.code_verifier as string | undefined
+        body.code_verifier as string | undefined,
+        (body.scope as string | undefined) ||
+          (typeof body.scope === "string" ? (body.scope as string) : undefined)
       );
       return c.json(result);
     } else if (body.grant_type === "refresh_token") {

@@ -80,7 +80,7 @@ export async function exchangeCodeForToken(
   clientSecret: string | undefined,
   tenantId: string,
   codeVerifier?: string,
-  scopes: string[] = MICROSOFT_GRAPH_DEFAULT_SCOPES
+  scope?: string
 ): Promise<TokenResponse> {
   const body = form({
     client_id: clientId,
@@ -88,7 +88,7 @@ export async function exchangeCodeForToken(
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri,
-    scope: scopes.join(" "),
+    scope,
     code_verifier: codeVerifier,
   });
 
