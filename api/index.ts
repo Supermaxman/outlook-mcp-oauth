@@ -108,6 +108,14 @@ export default new Hono<{ Bindings: Env }>()
       }
     });
 
+    // Ensure PKCE method defaults to S256 when a challenge is provided without a method
+    if (
+      microsoftAuthUrl.searchParams.has("code_challenge") &&
+      !microsoftAuthUrl.searchParams.has("code_challenge_method")
+    ) {
+      microsoftAuthUrl.searchParams.set("code_challenge_method", "S256");
+    }
+
     // Use our Microsoft app's client_id
     microsoftAuthUrl.searchParams.set("client_id", c.env.MICROSOFT_CLIENT_ID);
 
