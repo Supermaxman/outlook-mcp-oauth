@@ -262,27 +262,44 @@ export default new Hono<{ Bindings: Env }>()
 
           return c.json(response);
         }
-        const body = await c.req.json();
-        const bodyValue = body.value[0];
-        if (!bodyValue) {
-          return c.json({ error: "No body value" }, 400);
-        }
-        const clientState = bodyValue.clientState;
-        if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
-          return c.json({ error: "Invalid client state" }, 401);
-        }
-        const resourceId = bodyValue.resourceData?.id;
-        if (!resourceId) {
-          return c.json({ error: "No resource id" }, 400);
-        }
         // name for the email, so the agent can use it to identify the email account
         // from header
         const name = c.req.header("x-mcp-name");
 
+        const body = await c.req.json();
+        const bodyValues = body.value;
+        const emailIds = [];
+        let subscriptionId: string | undefined;
+        for (const bodyValue of bodyValues) {
+          const resourceId = bodyValue.resourceData?.id;
+          const clientState = bodyValue.clientState;
+          if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
+            continue;
+          }
+          if (!resourceId) {
+            continue;
+          }
+          emailIds.push(resourceId);
+          if (!subscriptionId) {
+            subscriptionId = bodyValue.subscriptionId;
+          }
+        }
+
+        if (!subscriptionId || !name || emailIds.length === 0) {
+          // just return ok, but nothing to process
+          const prompt: WebhookResponse = {
+            reqResponseCode: 200,
+            reqResponseContent: JSON.stringify({ ok: true }),
+            reqResponseContentType: "json",
+          };
+
+          return c.json(prompt);
+        }
+
         const respData = {
           name,
-          subscriptionId: bodyValue.subscriptionId,
-          emailId: resourceId,
+          subscriptionId,
+          emailIds,
         };
 
         const prompt: WebhookResponse = {
@@ -313,14 +330,25 @@ export default new Hono<{ Bindings: Env }>()
 
           return c.json(response);
         }
+        const name = c.req.header("x-mcp-name");
+
         const body = await c.req.json();
-        const bodyValue = body.value[0];
-        if (!bodyValue) {
-          return c.json({ error: "No body value" }, 400);
-        }
-        const clientState = bodyValue.clientState;
-        if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
-          return c.json({ error: "Invalid client state" }, 401);
+        const bodyValues = body.value;
+        const events = [];
+        let subscriptionId: string | undefined;
+        for (const bodyValue of bodyValues) {
+          const clientState = bodyValue.clientState;
+          if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
+            continue;
+          }
+          const eventType = bodyValue.lifecycleEvent;
+          if (!eventType) {
+            continue;
+          }
+          events.push(eventType);
+          if (!subscriptionId) {
+            subscriptionId = bodyValue.subscriptionId;
+          }
         }
         // types of events:
         // - subscriptionRenewalRequired (need to refresh the subscription)
@@ -329,15 +357,20 @@ export default new Hono<{ Bindings: Env }>()
         // - reauthorizationRequired (need to re-auth with oauth, leave this up to the UI)
         // no need to respond with any prompt info to the agent
 
-        // get the subscription id, the event type, and the name
-        const subscriptionId = bodyValue.subscriptionId;
-        const eventType = bodyValue.lifecycleEvent;
-        const name = c.req.header("x-mcp-name") ?? "outlook";
+        if (!subscriptionId || !name || events.length === 0) {
+          // just return ok, but nothing to process
+          const prompt: WebhookResponse = {
+            reqResponseCode: 200,
+            reqResponseContent: JSON.stringify({ ok: true }),
+            reqResponseContentType: "json",
+          };
 
+          return c.json(prompt);
+        }
         const respData = {
           name,
           subscriptionId,
-          eventType,
+          events,
         };
 
         const response: WebhookResponse = {
