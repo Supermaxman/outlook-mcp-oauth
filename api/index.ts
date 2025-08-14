@@ -295,8 +295,8 @@ export default new Hono<{ Bindings: Env }>()
 
         const respData = {
           name,
-          emailId: resourceId,
           subscriptionId: bodyValue.subscriptionId,
+          emailId: resourceId,
         };
 
         const prompt: WebhookResponse = {
