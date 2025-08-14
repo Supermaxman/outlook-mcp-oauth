@@ -270,7 +270,13 @@ export default new Hono<{ Bindings: Env }>()
         const validationToken = url.searchParams.get("validationToken");
         // Validation challenge from Microsoft Graph
         if (validationToken) {
-          return c.text(validationToken, 200);
+          const prompt: WebhookResponse = {
+            reqResponseCode: 200,
+            reqResponseContent: validationToken,
+            reqResponseContentType: "text",
+          };
+
+          return c.json(prompt);
         }
         const body = await c.req.json();
         const bodyValue = body.value[0];
