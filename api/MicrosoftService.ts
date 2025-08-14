@@ -774,4 +774,23 @@ export class MicrosoftService {
       }
     );
   }
+
+  async listSubscriptions() {
+    const subscriptions = await this.makeRequest<unknown>(
+      `${this.baseUrl}/subscriptions`,
+      {
+        method: "GET",
+      }
+    );
+    return subscriptions;
+  }
+
+  async deleteSubscription(subscriptionId: string) {
+    await this.makeRequestIgnoreResponse(
+      `${this.baseUrl}/subscriptions/${subscriptionId}`,
+      {
+        method: "DELETE",
+      }
+    );
+  }
 }

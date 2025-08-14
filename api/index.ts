@@ -249,18 +249,28 @@ export default new Hono<{ Bindings: Env }>()
     new Hono<{ Bindings: Env }>()
 
       // Notification payloads
+      .get("/:server/email-notify", async (c) => {
+        const url = new URL(c.req.url);
+        const validationToken = url.searchParams.get("validationToken");
+        if (validationToken) {
+          return c.text(validationToken, 200);
+        }
+        return c.text("OK", 200);
+      })
+      .get("/email-notify", async (c) => {
+        const url = new URL(c.req.url);
+        const validationToken = url.searchParams.get("validationToken");
+        if (validationToken) {
+          return c.text(validationToken, 200);
+        }
+        return c.text("OK", 200);
+      })
       .post("/email-notify", async (c) => {
         const url = new URL(c.req.url);
         const validationToken = url.searchParams.get("validationToken");
         // Validation challenge from Microsoft Graph
         if (validationToken) {
-          const response: WebhookResponse = {
-            reqResponseCode: 200,
-            reqResponseContent: validationToken,
-            reqResponseContentType: "text",
-          };
-
-          return c.json(response);
+          return c.text(validationToken, 200);
         }
         const body = await c.req.json();
         const bodyValue = body.value[0];
@@ -271,10 +281,14 @@ export default new Hono<{ Bindings: Env }>()
         if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
           return c.json({ error: "Invalid client state" }, 401);
         }
-        const resourceId = bodyValue.resourceData?.id;
-        if (!resourceId) {
-          return c.json({ error: "No resource id" }, 400);
+        let resourceId: string | undefined = bodyValue.resourceData?.id;
+        if (!resourceId && typeof bodyValue.resource === "string") {
+          const match = /messages\/([^\/]+)$/.exec(
+            bodyValue.resource as string
+          );
+          resourceId = match?.[1];
         }
+        if (!resourceId) return c.json({ error: "No resource id" }, 400);
         // name for the email, so the agent can use it to identify the email account
         // from header
         const name = c.req.header("x-mcp-name") ?? "outlook";
@@ -282,6 +296,7 @@ export default new Hono<{ Bindings: Env }>()
         const respData = {
           name,
           emailId: resourceId,
+          subscriptionId: bodyValue.subscriptionId,
         };
 
         const prompt: WebhookResponse = {
@@ -299,18 +314,28 @@ export default new Hono<{ Bindings: Env }>()
       })
 
       // Lifecycle notifications (e.g., reauthorizationRequired, subscriptionRemoved)
+      .get("/:server/email-lifecycle", async (c) => {
+        const url = new URL(c.req.url);
+        const validationToken = url.searchParams.get("validationToken");
+        if (validationToken) {
+          return c.text(validationToken, 200);
+        }
+        return c.text("OK", 200);
+      })
+      .get("/email-lifecycle", async (c) => {
+        const url = new URL(c.req.url);
+        const validationToken = url.searchParams.get("validationToken");
+        if (validationToken) {
+          return c.text(validationToken, 200);
+        }
+        return c.text("OK", 200);
+      })
       .post("/email-lifecycle", async (c) => {
         const url = new URL(c.req.url);
         const validationToken = url.searchParams.get("validationToken");
         // Validation challenge from Microsoft Graph
         if (validationToken) {
-          const response: WebhookResponse = {
-            reqResponseCode: 200,
-            reqResponseContent: validationToken,
-            reqResponseContentType: "text",
-          };
-
-          return c.json(response);
+          return c.text(validationToken, 200);
         }
         const body = await c.req.json();
         const bodyValue = body.value[0];

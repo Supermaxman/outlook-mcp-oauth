@@ -488,6 +488,32 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       }
     );
 
+    server.tool(
+      "listSubscriptions",
+      "List all subscriptions to resources.",
+      {},
+      async () => {
+        const subscriptions = await this.microsoftService.listSubscriptions();
+        return this.formatResponse("Subscriptions retrieved", subscriptions);
+      }
+    );
+
+    server.tool(
+      "deleteSubscription",
+      "Delete a subscription to a resource.",
+      {
+        subscriptionId: z
+          .string()
+          .describe("The ID of the subscription to delete"),
+      },
+      async ({ subscriptionId }) => {
+        await this.microsoftService.deleteSubscription(subscriptionId);
+        return this.formatResponse("Subscription deleted", {
+          success: true,
+        });
+      }
+    );
+
     return server;
   }
 }
