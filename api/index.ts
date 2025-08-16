@@ -322,6 +322,7 @@ export default new Hono<{ Bindings: Env }>()
         const validationToken = url.searchParams.get("validationToken");
         // Validation challenge from Microsoft Graph
         if (validationToken) {
+          console.log("Validation token received:", validationToken);
           const response: WebhookResponse = {
             reqResponseCode: 200,
             reqResponseContent: validationToken,
@@ -336,6 +337,7 @@ export default new Hono<{ Bindings: Env }>()
         const bodyValues = body.value;
         const events = [];
         let subscriptionId: string | undefined;
+        console.log(`events: received for ${name}`, bodyValues);
         for (const bodyValue of bodyValues) {
           const clientState = bodyValue.clientState;
           if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
@@ -356,7 +358,7 @@ export default new Hono<{ Bindings: Env }>()
         // - subscriptionRemoved (create new subscription)
         // - reauthorizationRequired (need to re-auth with oauth, leave this up to the UI)
         // no need to respond with any prompt info to the agent
-
+        console.log(`events to process:`, events);
         if (!subscriptionId || !name || events.length === 0) {
           // just return ok, but nothing to process
           const prompt: WebhookResponse = {
