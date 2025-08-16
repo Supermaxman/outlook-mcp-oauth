@@ -514,6 +514,29 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       }
     );
 
+    server.tool(
+      "searchPeople",
+      "Search for people in the user's contacts and emails. Returns a list of people with their name, email address, etc.",
+      {
+        query: z
+          .string()
+          .describe(
+            "The query to search for. This can be a name, email address, or other identifier."
+          ),
+        top: z
+          .number()
+          .min(1)
+          .max(20)
+          .default(10)
+          .optional()
+          .describe("The number of people to return"),
+      },
+      async ({ query, top }) => {
+        const people = await this.microsoftService.searchPeople(query, top);
+        return this.formatResponse("People retrieved", people);
+      }
+    );
+
     return server;
   }
 }

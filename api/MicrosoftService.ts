@@ -793,4 +793,24 @@ export class MicrosoftService {
       }
     );
   }
+
+  async searchPeople(query: string, top: number = 10) {
+    const params = {
+      $top: `${top}`,
+      $search: `"${query}"`,
+    };
+    const url = `${this.baseUrl}/me/people?${new URLSearchParams(
+      params
+    ).toString()}`;
+    const people = await this.makeRequest<{
+      value: {
+        id: string;
+        displayName: string;
+        givenName: string;
+      }[];
+    }>(url, {
+      method: "GET",
+    });
+    return people.value;
+  }
 }
