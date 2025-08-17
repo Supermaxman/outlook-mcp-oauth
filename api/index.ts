@@ -13,7 +13,7 @@ import { getEventCache, putEventCache } from "./lib/kv-helpers.ts";
 // Export the MicrosoftMCP class so the Worker runtime can find it
 export { MicrosoftMCP };
 
-const DEBOUNCE_TTL = 60;
+const DEBOUNCE_TTL = 2 * 60; // 2 minutes
 
 // Store registered clients in memory (in production, use a database)
 interface RegisteredClient {
