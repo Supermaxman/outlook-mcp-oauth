@@ -463,9 +463,18 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           .describe(
             "The name of the MCP server to create the subscription for. This is used to identify the server in the webhook URL."
           ),
+        resource: z
+          .enum(["email", "calendar"])
+          .describe("The resource to subscribe to: 'email' or 'calendar'"),
       },
-      async ({ serverName }) => {
-        await this.microsoftService.createSubscription(serverName);
+      async ({ serverName, resource }) => {
+        if (resource === "email") {
+          await this.microsoftService.createEmailSubscription(serverName);
+        } else if (resource === "calendar") {
+          await this.microsoftService.createCalendarSubscription(serverName);
+        } else {
+          throw new Error(`Invalid resource: ${resource}`);
+        }
         return this.formatResponse("Subscription created", {
           success: true,
         });

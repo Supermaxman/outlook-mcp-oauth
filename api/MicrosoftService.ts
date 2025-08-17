@@ -737,7 +737,7 @@ export class MicrosoftService {
     return moved;
   }
 
-  async createSubscription(serverName: string) {
+  async createEmailSubscription(serverName: string) {
     // max allowed for message subscriptions is 4230 minutes (~2.94 days)
     const expirationMinutes = 4230;
     const expirationDateTime = new Date(
@@ -753,8 +753,26 @@ export class MicrosoftService {
         lifecycleNotificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/${serverName}/email-lifecycle`,
         resource: "/me/mailFolders('Inbox')/messages",
         expirationDateTime: expirationDateTime.toISOString(),
-        // TODO: add this so we can get the resource data
-        // includeResourceData: true,
+      }),
+    });
+  }
+
+  async createCalendarSubscription(serverName: string) {
+    // max allowed for message subscriptions is 4230 minutes (~2.94 days)
+    const expirationMinutes = 4230;
+    const expirationDateTime = new Date(
+      Date.now() + expirationMinutes * 60 * 1000
+    );
+    await this.makeRequest<unknown>(`${this.baseUrl}/subscriptions`, {
+      method: "POST",
+      body: JSON.stringify({
+        changeType: "created,updated,deleted",
+        clientState: this.env.MICROSOFT_WEBHOOK_SECRET,
+        // /:server/:hook
+        notificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/${serverName}/calendar-notify`,
+        lifecycleNotificationUrl: `${this.env.MICROSOFT_WEBHOOK_URL}/${serverName}/calendar-lifecycle`,
+        resource: "/me/events",
+        expirationDateTime: expirationDateTime.toISOString(),
       }),
     });
   }

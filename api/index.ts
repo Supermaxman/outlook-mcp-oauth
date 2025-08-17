@@ -285,10 +285,12 @@ export default new Hono<{ Bindings: Env }>()
           }
         }
 
+        console.log(`emailIds: received for ${name}`, emailIds);
+
         if (!subscriptionId || !name || emailIds.length === 0) {
           // just return ok, but nothing to process
           const prompt: WebhookResponse = {
-            reqResponseCode: 200,
+            reqResponseCode: 202,
             reqResponseContent: JSON.stringify({ ok: true }),
             reqResponseContentType: "json",
           };
@@ -347,6 +349,10 @@ export default new Hono<{ Bindings: Env }>()
           if (!eventType) {
             continue;
           }
+          if (eventType === "missed") {
+            // we don't need to do anything here, just ignore for now.
+            continue;
+          }
           events.push(eventType);
           if (!subscriptionId) {
             subscriptionId = bodyValue.subscriptionId;
@@ -362,7 +368,7 @@ export default new Hono<{ Bindings: Env }>()
         if (!subscriptionId || !name || events.length === 0) {
           // just return ok, but nothing to process
           const prompt: WebhookResponse = {
-            reqResponseCode: 200,
+            reqResponseCode: 202,
             reqResponseContent: JSON.stringify({ ok: true }),
             reqResponseContentType: "json",
           };
@@ -380,6 +386,156 @@ export default new Hono<{ Bindings: Env }>()
           reqResponseContent: JSON.stringify({ ok: true }),
           reqResponseContentType: "json",
           promptContent: `Outlook email lifecycle notification received:\n\n\`\`\`json\n${JSON.stringify(
+            respData,
+            null,
+            2
+          )}\n\`\`\``,
+        };
+
+        return c.json(response);
+      })
+
+      // Notification payloads
+      .post("/calendar-notify", async (c) => {
+        const url = new URL(c.req.url);
+        const validationToken = url.searchParams.get("validationToken");
+        // Validation challenge from Microsoft Graph
+        if (validationToken) {
+          const response: WebhookResponse = {
+            reqResponseCode: 200,
+            reqResponseContent: validationToken,
+            reqResponseContentType: "text",
+          };
+
+          return c.json(response);
+        }
+        // name for the email, so the agent can use it to identify the email account
+        // from header
+        const name = c.req.header("x-mcp-name");
+
+        const body = await c.req.json();
+        const bodyValues = body.value;
+        const events = [];
+        let subscriptionId: string | undefined;
+        for (const bodyValue of bodyValues) {
+          const resourceId = bodyValue.resourceData?.id;
+          const clientState = bodyValue.clientState;
+          if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
+            continue;
+          }
+          if (!resourceId) {
+            continue;
+          }
+          events.push({
+            eventId: resourceId,
+            eventType: bodyValue.changeType,
+          });
+          if (!subscriptionId) {
+            subscriptionId = bodyValue.subscriptionId;
+          }
+        }
+
+        console.log(`events: received for ${name}`, events);
+
+        if (!subscriptionId || !name || events.length === 0) {
+          // just return ok, but nothing to process
+          const prompt: WebhookResponse = {
+            reqResponseCode: 202,
+            reqResponseContent: JSON.stringify({ ok: true }),
+            reqResponseContentType: "json",
+          };
+
+          return c.json(prompt);
+        }
+
+        const respData = {
+          name,
+          subscriptionId,
+          events,
+        };
+
+        const prompt: WebhookResponse = {
+          reqResponseCode: 202,
+          reqResponseContent: JSON.stringify({ ok: true }),
+          reqResponseContentType: "json",
+          promptContent: `Outlook calendar event notification received:\n\n\`\`\`json\n${JSON.stringify(
+            respData,
+            null,
+            2
+          )}\n\`\`\``,
+        };
+
+        return c.json(prompt);
+      })
+
+      // Lifecycle notifications (e.g., reauthorizationRequired, subscriptionRemoved)
+      .post("/calendar-lifecycle", async (c) => {
+        const url = new URL(c.req.url);
+        const validationToken = url.searchParams.get("validationToken");
+        // Validation challenge from Microsoft Graph
+        if (validationToken) {
+          console.log("Validation token received:", validationToken);
+          const response: WebhookResponse = {
+            reqResponseCode: 200,
+            reqResponseContent: validationToken,
+            reqResponseContentType: "text",
+          };
+
+          return c.json(response);
+        }
+        const name = c.req.header("x-mcp-name");
+
+        const body = await c.req.json();
+        const bodyValues = body.value;
+        const events = [];
+        let subscriptionId: string | undefined;
+        console.log(`events: received for ${name}`, bodyValues);
+        for (const bodyValue of bodyValues) {
+          const clientState = bodyValue.clientState;
+          if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
+            continue;
+          }
+          const eventType = bodyValue.lifecycleEvent;
+          if (!eventType) {
+            continue;
+          }
+          if (eventType === "missed") {
+            // we don't need to do anything here, just ignore for now.
+            continue;
+          }
+          events.push(eventType);
+          if (!subscriptionId) {
+            subscriptionId = bodyValue.subscriptionId;
+          }
+        }
+        // types of events:
+        // - subscriptionRenewalRequired (need to refresh the subscription)
+        // - missed (sign to run delta, but ok to ignore here for now)
+        // - subscriptionRemoved (create new subscription)
+        // - reauthorizationRequired (need to re-auth with oauth, leave this up to the UI)
+        // no need to respond with any prompt info to the agent
+        console.log(`events to process:`, events);
+        if (!subscriptionId || !name || events.length === 0) {
+          // just return ok, but nothing to process
+          const prompt: WebhookResponse = {
+            reqResponseCode: 202,
+            reqResponseContent: JSON.stringify({ ok: true }),
+            reqResponseContentType: "json",
+          };
+
+          return c.json(prompt);
+        }
+        const respData = {
+          name,
+          subscriptionId,
+          events,
+        };
+
+        const response: WebhookResponse = {
+          reqResponseCode: 202,
+          reqResponseContent: JSON.stringify({ ok: true }),
+          reqResponseContentType: "json",
+          promptContent: `Outlook calendar lifecycle notification received:\n\n\`\`\`json\n${JSON.stringify(
             respData,
             null,
             2
