@@ -40,14 +40,49 @@ export type MicrosoftAuthContext = {
   scope?: string;
 };
 
+export type EmailProcessData = {
+  name: string;
+  subscriptionId: string;
+  emailIds: string[];
+};
+
+export type EmailNotificationProcessData = {
+  name: string;
+  subscriptionId: string;
+  events: string[];
+};
+
+export type CalendarEventNotification = {
+  eventId: string;
+  eventType: string;
+};
+
+export type CalendarProcessData = {
+  name: string;
+  subscriptionId: string;
+  events: CalendarEventNotification[];
+};
+
+export type CalendarNotificationProcessData = {
+  name: string;
+  subscriptionId: string;
+  events: string[];
+};
+
 // Webhook response contract for proxied webhook handling
-export type WebhookResponse = {
+export type WebhookResponse<T> = {
   /** HTTP status code to proxy back to the origin of the webhook */
   reqResponseCode: number;
   /** body string to proxy back; if JSON, stringify it */
   reqResponseContent: string;
   /** content type for reqResponseContent: "json" or "text" */
   reqResponseContentType?: "json" | "text";
+  /** optional return to run with the agent to do something */
+  processData?: T;
+};
+
+// Webhook response contract for proxied webhook handling
+export type WebhookProcessResponse = {
   /** optional return to run with the agent to do something */
   promptContent?: string;
 };

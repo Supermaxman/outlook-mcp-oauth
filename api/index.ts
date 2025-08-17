@@ -7,7 +7,15 @@ import {
 } from "./lib/microsoft-auth.ts";
 import { cors } from "hono/cors";
 import { Hono } from "hono";
-import type { WebhookResponse } from "../types";
+import type {
+  CalendarEventNotification,
+  CalendarNotificationProcessData,
+  CalendarProcessData,
+  EmailNotificationProcessData,
+  EmailProcessData,
+  WebhookProcessResponse,
+  WebhookResponse,
+} from "../types";
 import { getEventCache, putEventCache } from "./lib/kv-helpers.ts";
 
 // Export the MicrosoftMCP class so the Worker runtime can find it
@@ -250,6 +258,10 @@ export default new Hono<{ Bindings: Env }>()
   .route(
     "/webhooks",
     new Hono<{ Bindings: Env }>()
+      .use("/email-notify/process", microsoftBearerTokenAuthMiddleware)
+      .use("/email-lifecycle/process", microsoftBearerTokenAuthMiddleware)
+      .use("/calendar-notify/process", microsoftBearerTokenAuthMiddleware)
+      .use("/calendar-lifecycle/process", microsoftBearerTokenAuthMiddleware)
 
       // Notification payloads
       .post("/email-notify", async (c) => {
@@ -257,7 +269,7 @@ export default new Hono<{ Bindings: Env }>()
         const validationToken = url.searchParams.get("validationToken");
         // Validation challenge from Microsoft Graph
         if (validationToken) {
-          const response: WebhookResponse = {
+          const response: WebhookResponse<EmailProcessData> = {
             reqResponseCode: 200,
             reqResponseContent: validationToken,
             reqResponseContentType: "text",
@@ -292,7 +304,7 @@ export default new Hono<{ Bindings: Env }>()
 
         if (!subscriptionId || !name || emailIds.length === 0) {
           // just return ok, but nothing to process
-          const prompt: WebhookResponse = {
+          const prompt: WebhookResponse<EmailProcessData> = {
             reqResponseCode: 202,
             reqResponseContent: JSON.stringify({ ok: true }),
             reqResponseContentType: "json",
@@ -301,18 +313,32 @@ export default new Hono<{ Bindings: Env }>()
           return c.json(prompt);
         }
 
-        const respData = {
+        const respData: EmailProcessData = {
           name,
           subscriptionId,
           emailIds,
         };
 
-        const prompt: WebhookResponse = {
+        const prompt: WebhookResponse<EmailProcessData> = {
           reqResponseCode: 202,
           reqResponseContent: JSON.stringify({ ok: true }),
           reqResponseContentType: "json",
+          processData: respData,
+        };
+
+        return c.json(prompt);
+      })
+
+      // Notification payloads
+      .post("/email-notify/process", async (c) => {
+        const name = c.req.header("x-mcp-name");
+
+        const body = (await c.req.json()) as EmailProcessData;
+        console.log(`email-notify/process: received for ${name}`, body);
+
+        const prompt: WebhookProcessResponse = {
           promptContent: `Outlook email received:\n\n\`\`\`json\n${JSON.stringify(
-            respData,
+            body,
             null,
             2
           )}\n\`\`\``,
@@ -328,7 +354,7 @@ export default new Hono<{ Bindings: Env }>()
         // Validation challenge from Microsoft Graph
         if (validationToken) {
           console.log("Validation token received:", validationToken);
-          const response: WebhookResponse = {
+          const response: WebhookResponse<EmailProcessData> = {
             reqResponseCode: 200,
             reqResponseContent: validationToken,
             reqResponseContentType: "text",
@@ -340,7 +366,7 @@ export default new Hono<{ Bindings: Env }>()
 
         const body = await c.req.json();
         const bodyValues = body.value;
-        const events = [];
+        const events: string[] = [];
         let subscriptionId: string | undefined;
         console.log(`events: received for ${name}`, bodyValues);
         for (const bodyValue of bodyValues) {
@@ -370,7 +396,7 @@ export default new Hono<{ Bindings: Env }>()
         console.log(`events to process:`, events);
         if (!subscriptionId || !name || events.length === 0) {
           // just return ok, but nothing to process
-          const prompt: WebhookResponse = {
+          const prompt: WebhookResponse<EmailProcessData> = {
             reqResponseCode: 202,
             reqResponseContent: JSON.stringify({ ok: true }),
             reqResponseContentType: "json",
@@ -378,18 +404,30 @@ export default new Hono<{ Bindings: Env }>()
 
           return c.json(prompt);
         }
-        const respData = {
+        const respData: EmailNotificationProcessData = {
           name,
           subscriptionId,
           events,
         };
 
-        const response: WebhookResponse = {
+        const response: WebhookResponse<EmailNotificationProcessData> = {
           reqResponseCode: 202,
           reqResponseContent: JSON.stringify({ ok: true }),
           reqResponseContentType: "json",
+          processData: respData,
+        };
+
+        return c.json(response);
+      })
+
+      // Lifecycle notifications (e.g., reauthorizationRequired, subscriptionRemoved)
+      .post("/email-lifecycle/process", async (c) => {
+        const name = c.req.header("x-mcp-name");
+        const body = (await c.req.json()) as EmailNotificationProcessData;
+        console.log(`email-lifecycle/process: received for ${name}`, body);
+        const response: WebhookProcessResponse = {
           promptContent: `Outlook email lifecycle notification received:\n\n\`\`\`json\n${JSON.stringify(
-            respData,
+            body,
             null,
             2
           )}\n\`\`\``,
@@ -404,7 +442,7 @@ export default new Hono<{ Bindings: Env }>()
         const validationToken = url.searchParams.get("validationToken");
         // Validation challenge from Microsoft Graph
         if (validationToken) {
-          const response: WebhookResponse = {
+          const response: WebhookResponse<CalendarProcessData> = {
             reqResponseCode: 200,
             reqResponseContent: validationToken,
             reqResponseContentType: "text",
@@ -418,7 +456,7 @@ export default new Hono<{ Bindings: Env }>()
 
         const body = await c.req.json();
         const bodyValues = body.value;
-        const events = [];
+        const events: CalendarEventNotification[] = [];
         let subscriptionId: string | undefined;
         for (const bodyValue of bodyValues) {
           const eventId = bodyValue.resourceData?.id;
@@ -535,7 +573,7 @@ export default new Hono<{ Bindings: Env }>()
 
         if (!subscriptionId || !name || events.length === 0) {
           // just return ok, but nothing to process
-          const prompt: WebhookResponse = {
+          const prompt: WebhookResponse<CalendarProcessData> = {
             reqResponseCode: 202,
             reqResponseContent: JSON.stringify({ ok: true }),
             reqResponseContentType: "json",
@@ -544,18 +582,32 @@ export default new Hono<{ Bindings: Env }>()
           return c.json(prompt);
         }
 
-        const respData = {
+        const respData: CalendarProcessData = {
           name,
           subscriptionId,
           events,
         };
 
-        const prompt: WebhookResponse = {
+        const prompt: WebhookResponse<CalendarProcessData> = {
           reqResponseCode: 202,
           reqResponseContent: JSON.stringify({ ok: true }),
           reqResponseContentType: "json",
+          processData: respData,
+        };
+
+        return c.json(prompt);
+      })
+
+      // Notification payloads
+      .post("/calendar-notify/process", async (c) => {
+        const name = c.req.header("x-mcp-name");
+
+        const body = (await c.req.json()) as CalendarProcessData;
+        console.log(`calendar-notify/process: received for ${name}`, body);
+
+        const prompt: WebhookProcessResponse = {
           promptContent: `Outlook calendar event notification received:\n\n\`\`\`json\n${JSON.stringify(
-            respData,
+            body,
             null,
             2
           )}\n\`\`\``,
@@ -571,7 +623,7 @@ export default new Hono<{ Bindings: Env }>()
         // Validation challenge from Microsoft Graph
         if (validationToken) {
           console.log("Validation token received:", validationToken);
-          const response: WebhookResponse = {
+          const response: WebhookResponse<CalendarProcessData> = {
             reqResponseCode: 200,
             reqResponseContent: validationToken,
             reqResponseContentType: "text",
@@ -583,7 +635,7 @@ export default new Hono<{ Bindings: Env }>()
 
         const body = await c.req.json();
         const bodyValues = body.value;
-        const events = [];
+        const events: string[] = [];
         let subscriptionId: string | undefined;
         console.log(`events: received for ${name}`, bodyValues);
         for (const bodyValue of bodyValues) {
@@ -613,7 +665,7 @@ export default new Hono<{ Bindings: Env }>()
         console.log(`events to process:`, events);
         if (!subscriptionId || !name || events.length === 0) {
           // just return ok, but nothing to process
-          const prompt: WebhookResponse = {
+          const prompt: WebhookResponse<CalendarNotificationProcessData> = {
             reqResponseCode: 202,
             reqResponseContent: JSON.stringify({ ok: true }),
             reqResponseContentType: "json",
@@ -621,18 +673,32 @@ export default new Hono<{ Bindings: Env }>()
 
           return c.json(prompt);
         }
-        const respData = {
+        const respData: CalendarNotificationProcessData = {
           name,
           subscriptionId,
           events,
         };
 
-        const response: WebhookResponse = {
+        const response: WebhookResponse<CalendarNotificationProcessData> = {
           reqResponseCode: 202,
           reqResponseContent: JSON.stringify({ ok: true }),
           reqResponseContentType: "json",
+          processData: respData,
+        };
+
+        return c.json(response);
+      })
+
+      // Lifecycle notifications (e.g., reauthorizationRequired, subscriptionRemoved)
+      .post("/calendar-lifecycle/process", async (c) => {
+        const name = c.req.header("x-mcp-name");
+
+        const body = (await c.req.json()) as CalendarNotificationProcessData;
+        console.log(`calendar-lifecycle/process: received for ${name}`, body);
+
+        const response: WebhookProcessResponse = {
           promptContent: `Outlook calendar lifecycle notification received:\n\n\`\`\`json\n${JSON.stringify(
-            respData,
+            body,
             null,
             2
           )}\n\`\`\``,
