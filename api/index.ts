@@ -478,7 +478,38 @@ export default new Hono<{ Bindings: Env }>()
               // we've recently processed the deleted event, so skip this updated event
               continue;
             }
+          } else if (eventType === "created") {
+            // if the update came in right before the created event, we should ignore the created event.
+            const updatedEventData = await getEventCache(
+              c.env,
+              name ?? "unknown",
+              "updated",
+              eventId
+            );
+            if (updatedEventData) {
+              console.log(
+                `skipping created event ${eventId} because we've recently processed the updated event`
+              );
+              // we've recently processed the updated event, so skip this created event
+              continue;
+            }
+          } else if (eventType === "deleted") {
+            // if the update came in right before the deleted event, we should ignore the deleted event.
+            const updatedEventData = await getEventCache(
+              c.env,
+              name ?? "unknown",
+              "updated",
+              eventId
+            );
+            if (updatedEventData) {
+              console.log(
+                `skipping deleted event ${eventId} because we've recently processed the updated event`
+              );
+              // we've recently processed the updated event, so skip this deleted event
+              continue;
+            }
           }
+
           events.push({
             eventId,
             eventType,
