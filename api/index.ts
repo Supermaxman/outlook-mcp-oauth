@@ -8,9 +8,12 @@ import {
 import { cors } from "hono/cors";
 import { Hono } from "hono";
 import type { WebhookResponse } from "../types";
+import { getEventCache, putEventCache } from "./lib/kv-helpers.ts";
 
 // Export the MicrosoftMCP class so the Worker runtime can find it
 export { MicrosoftMCP };
+
+const DEBOUNCE_TTL = 60;
 
 // Store registered clients in memory (in production, use a database)
 interface RegisteredClient {
@@ -418,18 +421,80 @@ export default new Hono<{ Bindings: Env }>()
         const events = [];
         let subscriptionId: string | undefined;
         for (const bodyValue of bodyValues) {
-          const resourceId = bodyValue.resourceData?.id;
+          const eventId = bodyValue.resourceData?.id;
           const clientState = bodyValue.clientState;
           if (clientState !== c.env.MICROSOFT_WEBHOOK_SECRET) {
             continue;
           }
-          if (!resourceId) {
+          if (!eventId) {
             continue;
           }
+          const eventType = bodyValue.changeType;
+
+          const eventData = await getEventCache(
+            c.env,
+            name ?? "unknown",
+            eventType,
+            eventId
+          );
+
+          if (eventData) {
+            console.log(
+              `skipping event ${eventId} because we've recently processed it`
+            );
+            // we've recently processed this event, so skip it
+            // this stops many updates from being processed all together.
+            // only issue is it might not be processed with the very last update in a short time.
+            // Consider using a more sophisticated debounce strategy if this is a problem, such as a batching strategy.
+            continue;
+          }
+
+          if (eventType === "updated") {
+            // often, an updated event is triggered within a minute of the event being created or deleted.
+            // so we need to ignore this update if we find the created event in the cache.
+            const createdEventData = await getEventCache(
+              c.env,
+              name ?? "unknown",
+              "created",
+              eventId
+            );
+            if (createdEventData) {
+              console.log(
+                `skipping updated event ${eventId} because we've recently processed the created event`
+              );
+              // we've recently processed the created event, so skip this updated event
+              continue;
+            }
+            const deletedEventData = await getEventCache(
+              c.env,
+              name ?? "unknown",
+              "deleted",
+              eventId
+            );
+            if (deletedEventData) {
+              console.log(
+                `skipping updated event ${eventId} because we've recently processed the deleted event`
+              );
+              // we've recently processed the deleted event, so skip this updated event
+              continue;
+            }
+          }
           events.push({
-            eventId: resourceId,
-            eventType: bodyValue.changeType,
+            eventId,
+            eventType,
           });
+          await putEventCache(
+            c.env,
+            name ?? "unknown",
+            eventType,
+            eventId,
+            JSON.stringify(bodyValue),
+            // 1 minute de-bounce / de-duplicate. This will mask updates to the event for
+            // the next minute from event creation, which will stop the agent from
+            // processing the event twice due to updates happening within a minute automatically
+            // from the created event.
+            DEBOUNCE_TTL
+          );
           if (!subscriptionId) {
             subscriptionId = bodyValue.subscriptionId;
           }

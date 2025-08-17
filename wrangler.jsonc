@@ -41,6 +41,12 @@
 			}
 		]
 	},
+	"kv_namespaces": [
+		{
+			"binding": "MICROSOFT_EVENT_CACHE",
+			"id": "71d79f06a55142c2b7191f19267c5e5d"
+		}
+	],
 	/**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables

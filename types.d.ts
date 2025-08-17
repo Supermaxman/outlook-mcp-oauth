@@ -6,6 +6,7 @@ interface Env {
   MICROSOFT_WEBHOOK_SECRET: string;
   MICROSOFT_WEBHOOK_URL: string;
   MICROSOFT_MCP_OBJECT: DurableObjectNamespace;
+  MICROSOFT_EVENT_CACHE: KVNamespace;
 }
 
 export type Todo = {

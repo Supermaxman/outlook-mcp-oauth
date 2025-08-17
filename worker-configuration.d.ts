@@ -11,6 +11,7 @@ declare namespace Cloudflare {
     MICROSOFT_MCP_OBJECT: DurableObjectNamespace<
       import("./api/index").MicrosoftMCP
     >;
+    MICROSOFT_EVENT_CACHE: KVNamespace;
   }
 }
 interface Env extends Cloudflare.Env {}
