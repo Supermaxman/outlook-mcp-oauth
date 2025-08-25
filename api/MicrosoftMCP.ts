@@ -18,7 +18,6 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
   }
 
   formatResponse = (
-    description: string,
     data: unknown
   ): {
     content: Array<{ type: "text"; text: string }>;
@@ -27,11 +26,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       content: [
         {
           type: "text",
-          text: `Success! ${description}\n\nResult:\n${JSON.stringify(
-            data,
-            null,
-            2
-          )}`,
+          text: JSON.stringify(data, null, 2),
         },
       ],
     };
@@ -66,7 +61,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           startDate,
           endDate
         );
-        return this.formatResponse("Calendar events retrieved", events);
+        return this.formatResponse(events);
       }
     );
 
@@ -133,7 +128,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           categories,
           attendees
         );
-        return this.formatResponse("Calendar event created", event);
+        return this.formatResponse(event);
       }
     );
 
@@ -145,7 +140,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       },
       async ({ eventId }) => {
         await this.microsoftService.deleteCalendarEvent(eventId);
-        return this.formatResponse("Calendar event deleted", {
+        return this.formatResponse({
           eventId,
         });
       }
@@ -159,7 +154,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       },
       async ({ eventId }) => {
         const event = await this.microsoftService.getCalendarEvent(eventId);
-        return this.formatResponse("Calendar event retrieved", event);
+        return this.formatResponse(event);
       }
     );
 
@@ -231,7 +226,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           categories,
           attendees
         );
-        return this.formatResponse("Calendar event updated", event);
+        return this.formatResponse(event);
       }
     );
 
@@ -288,7 +283,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           conversationId,
           query
         );
-        return this.formatResponse("Emails retrieved", emails);
+        return this.formatResponse(emails);
       }
     );
 
@@ -300,7 +295,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       },
       async ({ emailId }) => {
         await this.microsoftService.markEmailAsRead(emailId);
-        return this.formatResponse("Email marked as read", { emailId });
+        return this.formatResponse({ emailId });
       }
     );
 
@@ -312,7 +307,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       },
       async ({ emailId }) => {
         const moved = await this.microsoftService.archiveEmail(emailId);
-        return this.formatResponse("Email archived", moved);
+        return this.formatResponse(moved);
       }
     );
 
@@ -324,7 +319,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       },
       async ({ emailId }) => {
         const email = await this.microsoftService.getEmail(emailId);
-        return this.formatResponse("Email retrieved", email);
+        return this.formatResponse(email);
       }
     );
 
@@ -357,7 +352,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           ccRecipients,
           bccRecipients
         );
-        return this.formatResponse("Draft email created", draft);
+        return this.formatResponse(draft);
       }
     );
 
@@ -386,7 +381,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           replyAll,
           body
         );
-        return this.formatResponse("Reply draft created", draft);
+        return this.formatResponse(draft);
       }
     );
 
@@ -426,7 +421,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
           ccRecipients,
           bccRecipients
         );
-        return this.formatResponse("Draft updated", updated);
+        return this.formatResponse(updated);
       }
     );
 
@@ -438,7 +433,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       },
       async ({ emailId }) => {
         await this.microsoftService.sendEmail(emailId);
-        return this.formatResponse("Email sent", { emailId });
+        return this.formatResponse({ emailId });
       }
     );
 
@@ -450,7 +445,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       },
       async ({ emailId }) => {
         await this.microsoftService.deleteEmail(emailId);
-        return this.formatResponse("Email deleted", { emailId });
+        return this.formatResponse({ emailId });
       }
     );
 
@@ -475,9 +470,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
         } else {
           throw new Error(`Invalid resource: ${resource}`);
         }
-        return this.formatResponse("Subscription created", {
-          success: true,
-        });
+        return this.formatResponse({ success: true });
       }
     );
 
@@ -491,9 +484,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       },
       async ({ subscriptionId }) => {
         await this.microsoftService.refreshSubscription(subscriptionId);
-        return this.formatResponse("Subscription refreshed", {
-          success: true,
-        });
+        return this.formatResponse({ success: true });
       }
     );
 
@@ -503,7 +494,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       {},
       async () => {
         const subscriptions = await this.microsoftService.listSubscriptions();
-        return this.formatResponse("Subscriptions retrieved", subscriptions);
+        return this.formatResponse(subscriptions);
       }
     );
 
@@ -517,9 +508,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       },
       async ({ subscriptionId }) => {
         await this.microsoftService.deleteSubscription(subscriptionId);
-        return this.formatResponse("Subscription deleted", {
-          success: true,
-        });
+        return this.formatResponse({ success: true });
       }
     );
 
@@ -542,7 +531,7 @@ export class MicrosoftMCP extends McpAgent<Env, unknown, MicrosoftAuthContext> {
       },
       async ({ query, top }) => {
         const people = await this.microsoftService.searchPeople(query, top);
-        return this.formatResponse("People retrieved", people);
+        return this.formatResponse(people);
       }
     );
 
